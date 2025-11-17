@@ -4,19 +4,19 @@ import { z } from 'zod';
 
 const facilityProfileSchema = z.object({
   facilityName: z.string().min(1, '施設名は必須です'),
-  facilityNameKana: z.string().optional(),
-  facilityType: z.enum(['hotel', 'ryokan', 'onsen', 'resort', 'guesthouse', 'other']),
-  postalCode: z.string().optional(),
-  address: z.string().optional(),
-  phone: z.string().optional(),
-  websiteUrl: z.string().url('有効なURLを入力してください').optional().or(z.literal('')),
-  totalRooms: z.number().int().min(0).optional(),
-  totalBeds: z.number().int().min(0).optional(),
-  avgDailyGuests: z.number().int().min(0).optional(),
-  avgMonthlyGuests: z.number().int().min(0).optional(),
-  tags: z.array(z.string()).default([]),
-  description: z.string().optional(),
-  images: z.array(z.string()).default([]),
+  facilityNameKana: z.string().optional().nullable(),
+  facilityType: z.enum(['hotel', 'ryokan', 'onsen', 'cafe', 'restaurant', 'gym', 'salon', 'other']),
+  postalCode: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  websiteUrl: z.string().url('有効なURLを入力してください').optional().nullable().or(z.literal('')),
+  totalRooms: z.number().int().min(0).optional().nullable(),
+  totalBeds: z.number().int().min(0).optional().nullable(),
+  avgDailyGuests: z.number().int().min(0).optional().nullable(),
+  avgMonthlyGuests: z.number().int().min(0).optional().nullable(),
+  tags: z.array(z.string()).optional().default([]),
+  description: z.string().optional().nullable(),
+  images: z.array(z.string()).optional().default([]),
 });
 
 // GET /api/facility/profile - Get facility profile
@@ -74,7 +74,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('Received facility profile data:', JSON.stringify(body, null, 2));
+    
     const validatedData = facilityProfileSchema.parse(body);
+    console.log('Validated facility profile data:', JSON.stringify(validatedData, null, 2));
 
     // Check if facility exists
     const existingFacility = await prisma.facility.findUnique({

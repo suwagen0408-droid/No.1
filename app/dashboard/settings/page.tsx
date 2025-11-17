@@ -8,8 +8,10 @@ const facilityTypes = [
   { value: 'hotel', label: 'ホテル' },
   { value: 'ryokan', label: '旅館' },
   { value: 'onsen', label: '温泉施設' },
-  { value: 'resort', label: 'リゾート' },
-  { value: 'guesthouse', label: 'ゲストハウス' },
+  { value: 'cafe', label: 'カフェ' },
+  { value: 'restaurant', label: 'レストラン' },
+  { value: 'gym', label: 'ジム' },
+  { value: 'salon', label: 'サロン' },
   { value: 'other', label: 'その他' },
 ];
 
@@ -94,6 +96,8 @@ export default function SettingsPage() {
     setSaving(true);
 
     try {
+      console.log('Submitting facility profile:', facilityProfile);
+      
       const response = await fetch('/api/facility/profile', {
         method: 'PUT',
         headers: {
@@ -107,7 +111,13 @@ export default function SettingsPage() {
         alert('プロフィールを更新しました');
       } else {
         const error = await response.json();
-        alert(`エラー: ${error.error}`);
+        console.error('API error:', error);
+        if (error.details) {
+          const messages = error.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join('\n');
+          alert(`バリデーションエラー:\n${messages}`);
+        } else {
+          alert(`エラー: ${error.error}`);
+        }
       }
     } catch (error) {
       console.error('Error updating facility profile:', error);

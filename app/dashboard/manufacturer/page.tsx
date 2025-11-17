@@ -149,7 +149,10 @@ export default function ManufacturerDashboardPage() {
             </div>
 
             {/* Campaigns */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <Link
+              href="/dashboard/manufacturer/campaigns"
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+            >
               <div className="flex items-center">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-600">キャンペーン</p>
@@ -176,7 +179,7 @@ export default function ManufacturerDashboardPage() {
                   </svg>
                 </div>
               </div>
-            </div>
+            </Link>
 
             {/* Total Scans */}
             <div className="bg-white rounded-lg shadow p-6">
@@ -335,7 +338,7 @@ export default function ManufacturerDashboardPage() {
           {/* Quick Actions */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">クイックアクション</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Link
                 href="/dashboard/products"
                 className="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-500 hover:bg-blue-50 transition-colors"
@@ -354,6 +357,26 @@ export default function ManufacturerDashboardPage() {
                   />
                 </svg>
                 <p className="mt-3 font-medium text-gray-900">新しい商品を登録</p>
+              </Link>
+
+              <Link
+                href="/dashboard/manufacturer/campaigns"
+                className="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+              >
+                <svg
+                  className="w-12 h-12 mx-auto text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                <p className="mt-3 font-medium text-gray-900">キャンペーンを管理</p>
               </Link>
 
               <Link

@@ -72,6 +72,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   商品管理
                 </Link>
                 <Link
+                  href="/dashboard/manufacturer/campaigns"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  キャンペーン管理
+                </Link>
+                <Link
                   href="/dashboard/campaigns/new"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >

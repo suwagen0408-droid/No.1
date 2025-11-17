@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Get recently processed campaigns (last 20)
     const processedCampaigns = await prisma.campaign.findMany({
       where: {
-        status: { in: ['approved', 'active', 'rejected'] },
+        status: { in: ['approved', 'active', 'rejected', 'completed'] },
       },
       include: {
         manufacturer: {

@@ -24,7 +24,15 @@ export default function DashboardPage() {
       return;
     }
 
-    setUser(JSON.parse(userStr));
+    const userData = JSON.parse(userStr);
+    
+    // Redirect manufacturer to their dedicated dashboard
+    if (userData.role === 'manufacturer') {
+      router.push('/dashboard/manufacturer');
+      return;
+    }
+
+    setUser(userData);
   }, [router]);
 
   const handleLogout = () => {

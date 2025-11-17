@@ -142,7 +142,7 @@ function ProductLandingContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 pb-12">
       {/* Header */}
       <header className="border-b bg-white">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
@@ -154,8 +154,8 @@ function ProductLandingContent() {
       </header>
 
       {/* Product Details */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mx-auto max-w-4xl">
+      <main className="container mx-auto px-4 py-8 overflow-visible">
+        <div className="mx-auto max-w-4xl overflow-visible">
           <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
             <div className="grid md:grid-cols-2 gap-8">
               {/* Product Image */}

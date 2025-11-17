@@ -31,6 +31,12 @@ export default function DashboardPage() {
       router.push('/dashboard/manufacturer');
       return;
     }
+    
+    // Redirect facility to their dedicated dashboard
+    if (userData.role === 'facility') {
+      router.push('/dashboard/facility');
+      return;
+    }
 
     setUser(userData);
   }, [router]);

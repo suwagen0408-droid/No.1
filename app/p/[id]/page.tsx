@@ -198,6 +198,22 @@ function ProductLandingContent() {
                   href={product.ecUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={async () => {
+                    try {
+                      // Record purchase event
+                      await fetch('/api/events/purchase', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          productId: product.id,
+                          sessionId: localStorage.getItem('sessionId') || undefined,
+                          amount: product.retailPrice,
+                        }),
+                      });
+                    } catch (error) {
+                      console.error('Failed to record purchase event:', error);
+                    }
+                  }}
                   className="block w-full bg-blue-600 text-white text-center py-4 rounded-lg font-bold text-lg hover:bg-blue-700 mb-4"
                 >
                   購入する →

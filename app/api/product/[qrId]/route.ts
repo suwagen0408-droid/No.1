@@ -76,12 +76,21 @@ export async function GET(
       },
     };
 
-    return NextResponse.json(responseData);
+    return NextResponse.json(responseData, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+    });
   } catch (error) {
     console.error('Error fetching product data:', error);
     return NextResponse.json(
       { error: 'Failed to fetch product data' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      }
     );
   }
 }

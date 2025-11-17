@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface Product {
   id: string;
@@ -209,10 +210,9 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <DashboardLayout user={user}>
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">キャンペーン作成</h1>
@@ -228,10 +228,9 @@ export default function NewCampaignPage() {
             </Link>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-8">
+        <div className="px-6 py-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
@@ -564,8 +563,9 @@ export default function NewCampaignPage() {
               {submitting ? '作成中...' : 'キャンペーンを作成'}
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

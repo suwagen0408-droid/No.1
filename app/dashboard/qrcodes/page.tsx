@@ -6,12 +6,10 @@ import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface QRCode {
   id: string;
-  qrCodeUrl: string;
-  label?: string;
-  isActive: boolean;
-  scanCount: number;
+  url: string; // Changed from qrCodeUrl to url
+  codeString: string;
   createdAt: string;
-  lastScannedAt?: string;
+  expiresAt?: string | null;
   facilityProductPlacement: {
     product: {
       id: string;
@@ -150,13 +148,15 @@ export default function QRCodesPage() {
       if (!userStr) return;
 
       const userData = JSON.parse(userStr);
+      const isCurrentlyActive = !qrCode.expiresAt || new Date(qrCode.expiresAt) > new Date();
+      
       const response = await fetch(`/api/facility/qrcodes/${qrCode.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'x-user-id': userData.id,
         },
-        body: JSON.stringify({ isActive: !qrCode.isActive }),
+        body: JSON.stringify({ isActive: !isCurrentlyActive }),
       });
 
       if (response.ok) {
@@ -172,7 +172,7 @@ export default function QRCodesPage() {
   };
 
   const handleDownloadQRCode = (qrCode: QRCode) => {
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCode.qrCodeUrl)}`;
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCode.url)}`;
     window.open(qrImageUrl, '_blank');
   };
 
@@ -272,7 +272,7 @@ export default function QRCodesPage() {
                     {/* QR Code Image */}
                     <div className="bg-white p-4 rounded-lg border mb-4 text-center">
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode.qrCodeUrl)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode.url)}`}
                         alt="QR Code"
                         className="w-full h-auto"
                       />
@@ -282,12 +282,12 @@ export default function QRCodesPage() {
                     <div className="mb-3">
                       <span
                         className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                          qrCode.isActive
+                          !qrCode.expiresAt || new Date(qrCode.expiresAt) > new Date()
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-200 text-gray-600'
                         }`}
                       >
-                        {qrCode.isActive ? '有効' : '無効'}
+                        {!qrCode.expiresAt || new Date(qrCode.expiresAt) > new Date() ? '有効' : '無効'}
                       </span>
                     </div>
 
@@ -337,12 +337,12 @@ export default function QRCodesPage() {
                       <button
                         onClick={() => handleToggleActive(qrCode)}
                         className={`px-3 py-2 text-xs font-medium rounded ${
-                          qrCode.isActive
+                          !qrCode.expiresAt || new Date(qrCode.expiresAt) > new Date()
                             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
                       >
-                        {qrCode.isActive ? '無効化' : '有効化'}
+                        {!qrCode.expiresAt || new Date(qrCode.expiresAt) > new Date() ? '無効化' : '有効化'}
                       </button>
                     </div>
 
@@ -353,13 +353,10 @@ export default function QRCodesPage() {
                       削除
                     </button>
 
-                    {/* Last scanned */}
-                    {qrCode.lastScannedAt && (
-                      <p className="text-xs text-gray-500 mt-2 text-center">
-                        最終スキャン:{' '}
-                        {new Date(qrCode.lastScannedAt).toLocaleDateString('ja-JP')}
-                      </p>
-                    )}
+                    {/* Creation date */}
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      作成日: {new Date(qrCode.createdAt).toLocaleDateString('ja-JP')}
+                    </p>
                   </div>
                 ))}
               </div>

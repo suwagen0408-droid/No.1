@@ -15,6 +15,15 @@ interface User {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState({
+    totalManufacturers: 0,
+    totalFacilities: 0,
+    activeCampaigns: 0,
+    pendingApprovals: 0,
+    totalProducts: 0,
+    totalScans: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is logged in
@@ -39,7 +48,34 @@ export default function DashboardPage() {
     }
 
     setUser(userData);
+    loadStats(userData);
   }, [router]);
+
+  const loadStats = async (userData: User) => {
+    try {
+      console.log('Loading stats for role:', userData.role);
+      if (userData.role === 'admin') {
+        console.log('Fetching admin dashboard stats...');
+        const response = await fetch('/api/admin/dashboard', {
+          headers: { 'x-user-id': userData.id },
+        });
+        
+        console.log('Response status:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Dashboard stats:', data.stats);
+          setStats(data.stats);
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to fetch stats:', errorData);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -190,34 +226,51 @@ export default function DashboardPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium text-gray-600">
-                  {user.role === 'manufacturer' && '登録商品数'}
-                  {user.role === 'facility' && '導入キャンペーン数'}
-                  {user.role === 'admin' && '登録ユーザー数'}
+            {user.role === 'admin' && (
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">登録メーカー数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalManufacturers}
+                  </div>
                 </div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">0</div>
-              </div>
 
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium text-gray-600">
-                  {user.role === 'manufacturer' && 'アクティブキャンペーン'}
-                  {user.role === 'facility' && 'QRスキャン数'}
-                  {user.role === 'admin' && 'アクティブキャンペーン'}
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">登録施設数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalFacilities}
+                  </div>
                 </div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">0</div>
-              </div>
 
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium text-gray-600">
-                  {user.role === 'manufacturer' && 'QRスキャン数'}
-                  {user.role === 'facility' && '在庫アラート'}
-                  {user.role === 'admin' && '承認待ち'}
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">アクティブキャンペーン</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.activeCampaigns}
+                  </div>
                 </div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">0</div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">登録商品数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalProducts}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">承認待ち</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.pendingApprovals}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">総スキャン数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalScans}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quick Actions */}
             <div className="mt-8">

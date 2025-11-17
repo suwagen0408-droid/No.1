@@ -110,8 +110,17 @@ export default function LoginPage() {
               </button>
             </form>
 
+            <div className="mt-4 text-center">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                パスワードをお忘れですか？
+              </Link>
+            </div>
+
             <p className="mt-4 text-center text-sm text-gray-600">
-              アカウントをお持ちでない方は
+              アカウントをお持ちでない方は{' '}
               <Link href="/signup" className="text-blue-600 hover:underline">
                 新規登録
               </Link>

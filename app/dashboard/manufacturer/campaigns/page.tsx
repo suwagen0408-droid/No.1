@@ -87,6 +87,45 @@ export default function ManufacturerCampaignsPage() {
     }
   };
 
+  const handleActivateCampaign = async (campaignId: string) => {
+    if (!confirm('このキャンペーンを開始しますか？')) {
+      return;
+    }
+
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+
+      const userData = JSON.parse(userStr);
+      const response = await fetch(`/api/manufacturer/campaigns/${campaignId}/activate`, {
+        method: 'POST',
+        headers: { 'x-user-id': userData.id },
+      });
+
+      if (response.ok) {
+        alert('キャンペーンを開始しました！');
+        loadCampaigns();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'キャンペーンの開始に失敗しました');
+      }
+    } catch (error) {
+      console.error('Error activating campaign:', error);
+      alert('キャンペーンの開始に失敗しました');
+    }
+  };
+
+  const canActivateCampaign = (campaign: Campaign) => {
+    // Can activate if status is 'approved'
+    return campaign.status === 'approved';
+  };
+
+  const isBeforeStartDate = (campaign: Campaign) => {
+    const now = new Date();
+    const startDate = new Date(campaign.startDate);
+    return now < startDate;
+  };
+
   if (!user) {
     return <div className="p-8">Loading...</div>;
   }
@@ -244,6 +283,16 @@ export default function ManufacturerCampaignsPage() {
                         >
                           編集
                         </Link>
+                      )}
+                      {canActivateCampaign(campaign) && (
+                        <button
+                          onClick={() => handleActivateCampaign(campaign.id)}
+                          className="px-4 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700"
+                        >
+                          {isBeforeStartDate(campaign) 
+                            ? '早期開始' 
+                            : 'キャンペーン開始'}
+                        </button>
                       )}
                     </div>
                   </div>

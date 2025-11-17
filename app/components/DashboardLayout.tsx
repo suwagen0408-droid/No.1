@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ReactNode } from 'react';
+import NotificationBell from './NotificationBell';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -32,6 +33,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
             <span className="text-xl font-bold text-gray-900">ESSC</span>
           </Link>
           <div className="flex items-center space-x-4">
+            <NotificationBell userId={user.id} />
             <span className="text-sm text-gray-600">
               {user.profile?.companyName || user.profile?.facilityName || user.email}
             </span>
@@ -84,6 +86,18 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   キャンペーン作成
                 </Link>
                 <Link
+                  href="/dashboard/manufacturer/invoices"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  請求書管理
+                </Link>
+                <Link
+                  href="/dashboard/manufacturer/feedback"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  フィードバック
+                </Link>
+                <Link
                   href="/dashboard/reports"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
@@ -122,6 +136,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   承認管理
+                </Link>
+                <Link
+                  href="/dashboard/admin/reviews"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  レビュー管理
                 </Link>
                 <Link
                   href="/dashboard/analytics"

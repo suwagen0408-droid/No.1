@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { CampaignStatus } from '@prisma/client';
+import { notifyCampaignApproved, notifyCampaignRejected } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
           { status: CampaignStatus.active },
           { status: CampaignStatus.completed },
         ],
+        deletedAt: null,
       },
       include: {
         manufacturer: {
@@ -156,19 +158,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Create notification for manufacturer
-    await prisma.notification.create({
-      data: {
-        userId: campaign.manufacturer.userId,
-        type: action === 'approve' ? 'campaign_approved' : 'campaign_rejected',
-        title: action === 'approve' ? 'キャンペーン承認' : 'キャンペーン却下',
-        message:
-          action === 'approve'
-            ? `キャンペーン「${campaign.name}」が承認されました。`
-            : `キャンペーン「${campaign.name}」が却下されました。理由: ${rejectionReason || '未指定'}`,
-        relatedResourceType: 'campaign',
-        relatedResourceId: campaignId,
-      },
-    });
+    if (action === 'approve') {
+      await notifyCampaignApproved(campaign.manufacturer.userId, campaignId, campaign.name);
+    } else {
+      await notifyCampaignRejected(campaign.manufacturer.userId, campaignId, campaign.name, rejectionReason);
+    }
 
     // Create audit log
     await prisma.auditLog.create({

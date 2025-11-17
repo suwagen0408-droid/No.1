@@ -1,6 +1,34 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
+  const [stats, setStats] = useState({
+    totalManufacturers: 0,
+    totalFacilities: 0,
+    activeCampaigns: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await fetch('/api/public/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data.stats);
+        }
+      } catch (error) {
+        console.error('統計の読み込みエラー:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadStats();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Header */}
@@ -94,15 +122,21 @@ export default function Home() {
           <div className="rounded-lg bg-white p-8 shadow-sm">
             <div className="grid gap-8 md:grid-cols-3">
               <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600">-</div>
+                <div className="text-4xl font-bold text-blue-600">
+                  {loading ? '...' : stats.totalManufacturers}
+                </div>
                 <div className="mt-2 text-gray-600">登録メーカー数</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600">-</div>
+                <div className="text-4xl font-bold text-blue-600">
+                  {loading ? '...' : stats.totalFacilities}
+                </div>
                 <div className="mt-2 text-gray-600">登録施設数</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600">-</div>
+                <div className="text-4xl font-bold text-blue-600">
+                  {loading ? '...' : stats.activeCampaigns}
+                </div>
                 <div className="mt-2 text-gray-600">アクティブキャンペーン</div>
               </div>
             </div>

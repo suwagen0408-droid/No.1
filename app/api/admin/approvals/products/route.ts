@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { notifyProductApproved, notifyProductRejected } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     const processedProducts = await prisma.product.findMany({
       where: {
         status: { in: ['approved', 'rejected'] },
+        deletedAt: null,
       },
       include: {
         manufacturer: {
@@ -124,19 +126,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Create notification for manufacturer
-    await prisma.notification.create({
-      data: {
-        userId: product.manufacturer.userId,
-        type: action === 'approve' ? 'product_approved' : 'product_rejected',
-        title: action === 'approve' ? '商品承認' : '商品却下',
-        message:
-          action === 'approve'
-            ? `商品「${product.name}」が承認されました。`
-            : `商品「${product.name}」が却下されました。理由: ${rejectionReason || '未指定'}`,
-        relatedResourceType: 'product',
-        relatedResourceId: productId,
-      },
-    });
+    if (action === 'approve') {
+      await notifyProductApproved(product.manufacturer.userId, productId, product.name);
+    } else {
+      await notifyProductRejected(product.manufacturer.userId, productId, product.name, rejectionReason);
+    }
 
     // Create audit log
     await prisma.auditLog.create({

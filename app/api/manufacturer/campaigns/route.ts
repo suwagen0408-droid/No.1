@@ -81,6 +81,68 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Auto-activate campaigns that are approved and past their start date
+    const now = new Date();
+    const campaignsToActivate = campaigns.filter(
+      (c) => c.status === 'approved' && new Date(c.startDate) <= now
+    );
+
+    if (campaignsToActivate.length > 0) {
+      await Promise.all(
+        campaignsToActivate.map((campaign) =>
+          prisma.campaign.update({
+            where: { id: campaign.id },
+            data: { status: 'active' },
+          })
+        )
+      );
+
+      // Re-fetch campaigns with updated status
+      const updatedCampaigns = await prisma.campaign.findMany({
+        where: {
+          manufacturerId: manufacturer.id,
+          deletedAt: null,
+        },
+        include: {
+          campaignProducts: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  mainImageUrl: true,
+                  category: true,
+                },
+              },
+            },
+          },
+          facilityCampaigns: {
+            include: {
+              facility: {
+                select: {
+                  id: true,
+                  facilityName: true,
+                  facilityType: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              facilityCampaigns: true,
+              qrScanEvents: true,
+              purchaseEvents: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return NextResponse.json({ campaigns: updatedCampaigns });
+    }
+
     return NextResponse.json({ campaigns });
   } catch (error) {
     console.error('Error fetching campaigns:', error);

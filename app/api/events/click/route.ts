@@ -38,15 +38,23 @@ export async function POST(request: NextRequest) {
     });
 
     // Create click event
+    // Note: scanEventId should be the qrScanEventId
+    if (!validatedData.scanEventId) {
+      return NextResponse.json({ error: 'scanEventId is required' }, { status: 400 });
+    }
+    
+    if (!qrCode?.facilityProductPlacement.facilityCampaign?.facilityId) {
+      return NextResponse.json({ error: 'Invalid QR code configuration' }, { status: 400 });
+    }
+
     const clickEvent = await prisma.clickEvent.create({
       data: {
-        qrCodeId: validatedData.qrCodeId,
+        qrScanEventId: validatedData.scanEventId,
         productId: validatedData.productId,
-        facilityId: qrCode?.facilityProductPlacement.facilityCampaign?.facilityId,
-        campaignId: qrCode?.facilityProductPlacement.facilityCampaign?.campaignId,
-        scanEventId: validatedData.scanEventId,
-        userAgent: validatedData.userAgent,
-        ipAddress: validatedData.ipAddress,
+        facilityId: qrCode.facilityProductPlacement.facilityCampaign.facilityId,
+        campaignId: qrCode.facilityProductPlacement.facilityCampaign.campaignId,
+        clickUrl: product.ecUrl || '',
+        sessionId: validatedData.ipAddress, // Using IP as session identifier for now
       },
     });
 
@@ -63,7 +71,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 }
       );
     }

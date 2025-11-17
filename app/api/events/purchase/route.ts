@@ -44,17 +44,14 @@ export async function POST(request: NextRequest) {
     // Create purchase event
     const purchaseEvent = await prisma.purchaseEvent.create({
       data: {
-        qrCodeId: validatedData.qrCodeId,
         productId: validatedData.productId,
-        facilityId: qrCode?.facilityProductPlacement.facilityCampaign?.facilityId,
-        campaignId: qrCode?.facilityProductPlacement.facilityCampaign?.campaignId,
-        clickEventId: validatedData.clickEventId,
-        scanEventId: validatedData.scanEventId,
-        purchaseAmount: validatedData.purchaseAmount,
+        facilityId: qrCode?.facilityProductPlacement.facilityCampaign?.facilityId || null,
+        campaignId: qrCode?.facilityProductPlacement.facilityCampaign?.campaignId || null,
+        clickEventId: validatedData.clickEventId || null,
+        externalOrderId: validatedData.orderId || `order-${Date.now()}`,
+        amount: validatedData.purchaseAmount,
         quantity: validatedData.quantity,
-        orderId: validatedData.orderId,
-        userAgent: validatedData.userAgent,
-        ipAddress: validatedData.ipAddress,
+        purchasedAt: new Date(),
       },
     });
 
@@ -63,7 +60,7 @@ export async function POST(request: NextRequest) {
         purchaseEvent: {
           id: purchaseEvent.id,
           timestamp: purchaseEvent.purchasedAt,
-          amount: purchaseEvent.purchaseAmount,
+          amount: purchaseEvent.amount,
         },
       },
       { status: 201 }
@@ -71,7 +68,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 }
       );
     }

@@ -21,9 +21,10 @@ const updateCampaignSchema = z.object({
 // GET /api/admin/campaigns/[id] - Get campaign details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -39,7 +40,7 @@ export async function GET(
     }
 
     const campaign = await prisma.campaign.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         manufacturer: {
           select: {
@@ -88,9 +89,10 @@ export async function GET(
 // PUT /api/admin/campaigns/[id] - Update campaign
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -142,7 +144,7 @@ export async function PUT(
     }
 
     const campaign = await prisma.campaign.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     });
 
@@ -152,7 +154,7 @@ export async function PUT(
         userId,
         action: 'ADMIN_UPDATE_CAMPAIGN',
         resourceType: 'campaign',
-        resourceId: params.id,
+        resourceId: id,
         newValues: JSON.stringify(updateData),
       },
     });
@@ -160,7 +162,7 @@ export async function PUT(
     return NextResponse.json({ campaign, message: 'キャンペーン情報を更新しました' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
     }
     console.error('Error updating campaign:', error);
     return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 });
@@ -170,9 +172,10 @@ export async function PUT(
 // DELETE /api/admin/campaigns/[id] - Delete campaign
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -189,7 +192,7 @@ export async function DELETE(
 
     // Soft delete
     await prisma.campaign.update({
-      where: { id: params.id },
+      where: { id },
       data: { deletedAt: new Date() },
     });
 
@@ -199,7 +202,7 @@ export async function DELETE(
         userId,
         action: 'ADMIN_DELETE_CAMPAIGN',
         resourceType: 'campaign',
-        resourceId: params.id,
+        resourceId: id,
       },
     });
 

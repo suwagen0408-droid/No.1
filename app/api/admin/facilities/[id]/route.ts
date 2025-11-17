@@ -2,20 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-const updateManufacturerSchema = z.object({
-  companyName: z.string().min(1).optional(),
-  companyNameKana: z.string().optional().nullable(),
-  representativeName: z.string().optional().nullable(),
+const updateFacilitySchema = z.object({
+  facilityName: z.string().min(1).optional(),
+  facilityNameKana: z.string().optional().nullable(),
+  facilityType: z.enum(['hotel', 'ryokan', 'onsen', 'cafe', 'restaurant', 'gym', 'salon', 'other']).optional(),
   postalCode: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   websiteUrl: z.string().url().optional().nullable().or(z.literal('')),
-  businessLicenseNumber: z.string().optional().nullable(),
+  totalRooms: z.number().int().min(0).optional().nullable(),
+  totalBeds: z.number().int().min(0).optional().nullable(),
+  avgDailyGuests: z.number().int().min(0).optional().nullable(),
+  avgMonthlyGuests: z.number().int().min(0).optional().nullable(),
   description: z.string().optional().nullable(),
-  logoUrl: z.string().url().optional().nullable().or(z.literal('')),
 });
 
-// GET /api/admin/manufacturers/[id] - Get manufacturer details
+// GET /api/admin/facilities/[id] - Get facility details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const manufacturer = await prisma.manufacturer.findUnique({
+    const facility = await prisma.facility.findUnique({
       where: { id: id },
       include: {
         user: {
@@ -48,18 +50,28 @@ export async function GET(
       },
     });
 
-    if (!manufacturer) {
-      return NextResponse.json({ error: 'Manufacturer not found' }, { status: 404 });
+    if (!facility) {
+      return NextResponse.json({ error: 'Facility not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ manufacturer });
+    // Parse JSON fields
+    const tags = facility.tags ? JSON.parse(facility.tags) : [];
+    const images = facility.images ? JSON.parse(facility.images) : [];
+
+    return NextResponse.json({
+      facility: {
+        ...facility,
+        tags,
+        images,
+      },
+    });
   } catch (error) {
-    console.error('Error fetching manufacturer:', error);
-    return NextResponse.json({ error: 'Failed to fetch manufacturer' }, { status: 500 });
+    console.error('Error fetching facility:', error);
+    return NextResponse.json({ error: 'Failed to fetch facility' }, { status: 500 });
   }
 }
 
-// PUT /api/admin/manufacturers/[id] - Update manufacturer
+// PUT /api/admin/facilities/[id] - Update facility
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -81,9 +93,9 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const validatedData = updateManufacturerSchema.parse(body);
+    const validatedData = updateFacilitySchema.parse(body);
 
-    const manufacturer = await prisma.manufacturer.update({
+    const facility = await prisma.facility.update({
       where: { id: id },
       data: validatedData,
     });
@@ -92,24 +104,24 @@ export async function PUT(
     await prisma.auditLog.create({
       data: {
         userId,
-        action: 'ADMIN_UPDATE_MANUFACTURER',
-        resourceType: 'manufacturer',
+        action: 'ADMIN_UPDATE_FACILITY',
+        resourceType: 'facility',
         resourceId: id,
         newValues: JSON.stringify(validatedData),
       },
     });
 
-    return NextResponse.json({ manufacturer, message: 'メーカー情報を更新しました' });
+    return NextResponse.json({ facility, message: '施設情報を更新しました' });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
     }
-    console.error('Error updating manufacturer:', error);
-    return NextResponse.json({ error: 'Failed to update manufacturer' }, { status: 500 });
+    console.error('Error updating facility:', error);
+    return NextResponse.json({ error: 'Failed to update facility' }, { status: 500 });
   }
 }
 
-// DELETE /api/admin/manufacturers/[id] - Delete manufacturer
+// DELETE /api/admin/facilities/[id] - Delete facility
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -131,7 +143,7 @@ export async function DELETE(
     }
 
     // Soft delete
-    await prisma.manufacturer.update({
+    await prisma.facility.update({
       where: { id: id },
       data: { deletedAt: new Date() },
     });
@@ -140,15 +152,15 @@ export async function DELETE(
     await prisma.auditLog.create({
       data: {
         userId,
-        action: 'ADMIN_DELETE_MANUFACTURER',
-        resourceType: 'manufacturer',
+        action: 'ADMIN_DELETE_FACILITY',
+        resourceType: 'facility',
         resourceId: id,
       },
     });
 
-    return NextResponse.json({ message: 'メーカーを削除しました' });
+    return NextResponse.json({ message: '施設を削除しました' });
   } catch (error) {
-    console.error('Error deleting manufacturer:', error);
-    return NextResponse.json({ error: 'Failed to delete manufacturer' }, { status: 500 });
+    console.error('Error deleting facility:', error);
+    return NextResponse.json({ error: 'Failed to delete facility' }, { status: 500 });
   }
 }

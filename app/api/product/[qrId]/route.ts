@@ -4,11 +4,12 @@ import { prisma } from '@/lib/prisma';
 // GET /api/product/[qrId] - Get product info for landing page
 export async function GET(
   request: NextRequest,
-  { params }: { params: { qrId: string } }
+  { params }: { params: Promise<{ qrId: string }> }
 ) {
   try {
+    const { qrId } = await params;
     const qrCode = await prisma.qrCode.findUnique({
-      where: { id: params.qrId },
+      where: { id: qrId },
       include: {
         facilityProductPlacement: {
           include: {
@@ -48,18 +49,13 @@ export async function GET(
       return NextResponse.json({ error: 'QR code not found' }, { status: 404 });
     }
 
-    if (!qrCode.isActive) {
-      return NextResponse.json({ error: 'QR code is inactive' }, { status: 400 });
+    // Check if QR code is expired
+    if (qrCode.expiresAt && new Date() > qrCode.expiresAt) {
+      return NextResponse.json({ error: 'QR code has expired' }, { status: 400 });
     }
 
     const product = qrCode.facilityProductPlacement.product;
     const facilityCampaign = qrCode.facilityProductPlacement.facilityCampaign;
-
-    // Parse JSON fields
-    const features = product.features ? JSON.parse(product.features as string) : [];
-    const additionalImageUrls = product.additionalImageUrls
-      ? JSON.parse(product.additionalImageUrls as string)
-      : [];
 
     const responseData = {
       product: {
@@ -68,11 +64,9 @@ export async function GET(
         nameEn: product.nameEn,
         description: product.description,
         mainImageUrl: product.mainImageUrl,
-        additionalImageUrls,
         category: product.category,
         retailPrice: product.retailPrice,
         ecUrl: product.ecUrl,
-        features,
         manufacturer: product.manufacturer,
       },
       facility: facilityCampaign?.facility || null,

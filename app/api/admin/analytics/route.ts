@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     // Top performing facilities
     const topFacilities = await prisma.facility.findMany({
       where: {
-        status: 'active',
+        deletedAt: null,
       },
       select: {
         id: true,

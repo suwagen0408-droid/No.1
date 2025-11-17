@@ -18,10 +18,9 @@ const updateManufacturerSchema = z.object({
 // GET /api/admin/manufacturers/[id] - Get manufacturer details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,7 +36,7 @@ export async function GET(
     }
 
     const manufacturer = await prisma.manufacturer.findUnique({
-      where: { id: id },
+      where: { id: params.id },
       include: {
         user: {
           select: {
@@ -62,10 +61,9 @@ export async function GET(
 // PUT /api/admin/manufacturers/[id] - Update manufacturer
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -84,7 +82,7 @@ export async function PUT(
     const validatedData = updateManufacturerSchema.parse(body);
 
     const manufacturer = await prisma.manufacturer.update({
-      where: { id: id },
+      where: { id: params.id },
       data: validatedData,
     });
 
@@ -94,7 +92,7 @@ export async function PUT(
         userId,
         action: 'ADMIN_UPDATE_MANUFACTURER',
         resourceType: 'manufacturer',
-        resourceId: id,
+        resourceId: params.id,
         newValues: JSON.stringify(validatedData),
       },
     });
@@ -102,7 +100,7 @@ export async function PUT(
     return NextResponse.json({ manufacturer, message: 'メーカー情報を更新しました' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
+      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 });
     }
     console.error('Error updating manufacturer:', error);
     return NextResponse.json({ error: 'Failed to update manufacturer' }, { status: 500 });
@@ -112,10 +110,9 @@ export async function PUT(
 // DELETE /api/admin/manufacturers/[id] - Delete manufacturer
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -132,7 +129,7 @@ export async function DELETE(
 
     // Soft delete
     await prisma.manufacturer.update({
-      where: { id: id },
+      where: { id: params.id },
       data: { deletedAt: new Date() },
     });
 
@@ -142,7 +139,7 @@ export async function DELETE(
         userId,
         action: 'ADMIN_DELETE_MANUFACTURER',
         resourceType: 'manufacturer',
-        resourceId: id,
+        resourceId: params.id,
       },
     });
 

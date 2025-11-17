@@ -41,10 +41,9 @@ const productSchema = z.object({
 // GET /api/manufacturer/products/[id] - Get single product
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -67,7 +66,7 @@ export async function GET(
 
     const product = await prisma.product.findFirst({
       where: {
-        id: id,
+        id: params.id,
         manufacturerId: manufacturer.id,
         deletedAt: null,
       },
@@ -112,10 +111,9 @@ export async function GET(
 // PUT /api/manufacturer/products/[id] - Update product
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -139,7 +137,7 @@ export async function PUT(
     // Check if product exists and belongs to this manufacturer
     const existingProduct = await prisma.product.findFirst({
       where: {
-        id: id,
+        id: params.id,
         manufacturerId: manufacturer.id,
         deletedAt: null,
       },
@@ -166,7 +164,7 @@ export async function PUT(
     }
 
     const product = await prisma.product.update({
-      where: { id: id },
+      where: { id: params.id },
       data: updateData,
       include: {
         productImages: true,
@@ -195,7 +193,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
@@ -211,10 +209,9 @@ export async function PUT(
 // DELETE /api/manufacturer/products/[id] - Delete product (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -237,7 +234,7 @@ export async function DELETE(
 
     const product = await prisma.product.findFirst({
       where: {
-        id: id,
+        id: params.id,
         manufacturerId: manufacturer.id,
         deletedAt: null,
       },
@@ -252,7 +249,7 @@ export async function DELETE(
 
     // Soft delete
     await prisma.product.update({
-      where: { id: id },
+      where: { id: params.id },
       data: {
         deletedAt: new Date(),
         status: 'archived',

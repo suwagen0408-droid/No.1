@@ -18,10 +18,9 @@ const stockUpdateSchema = z.object({
 // GET /api/facility/placements/[id] - Get single placement
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -38,7 +37,7 @@ export async function GET(
 
     const placement = await prisma.facilityProductPlacement.findFirst({
       where: {
-        id: id,
+        id: params.id,
         facilityCampaign: {
           facilityId: facility.id,
         },
@@ -50,14 +49,18 @@ export async function GET(
             campaign: true,
           },
         },
-        qrCodes: true,
+        qrCodes: {
+          where: {
+            isActive: true,
+          },
+        },
         stockLogs: {
           orderBy: {
             createdAt: 'desc',
           },
           take: 10,
           include: {
-            logger: {
+            user: {
               select: {
                 email: true,
               },
@@ -84,10 +87,9 @@ export async function GET(
 // PUT /api/facility/placements/[id] - Update placement
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -108,7 +110,7 @@ export async function PUT(
     // Verify ownership
     const existingPlacement = await prisma.facilityProductPlacement.findFirst({
       where: {
-        id: id,
+        id: params.id,
         facilityCampaign: {
           facilityId: facility.id,
         },
@@ -120,7 +122,7 @@ export async function PUT(
     }
 
     const placement = await prisma.facilityProductPlacement.update({
-      where: { id: id },
+      where: { id: params.id },
       data: validatedData,
       include: {
         product: true,
@@ -136,7 +138,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
@@ -152,10 +154,9 @@ export async function PUT(
 // POST /api/facility/placements/[id] - Update stock (for stock changes)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -176,7 +177,7 @@ export async function POST(
     // Verify ownership
     const placement = await prisma.facilityProductPlacement.findFirst({
       where: {
-        id,
+        id: params.id,
         facilityCampaign: {
           facilityId: facility.id,
         },
@@ -199,7 +200,7 @@ export async function POST(
 
     // Update placement
     const updatedPlacement = await prisma.facilityProductPlacement.update({
-      where: { id: id },
+      where: { id: params.id },
       data: {
         currentUnits: newBalance,
       },
@@ -208,13 +209,12 @@ export async function POST(
     // Create stock log
     await prisma.stockLog.create({
       data: {
-        facilityProductPlacementId: id,
+        facilityProductPlacementId: params.id,
         changeType: validatedData.changeType,
-        quantity: validatedData.changeAmount,
-        beforeUnits: placement.currentUnits,
-        afterUnits: newBalance,
-        note: validatedData.notes || null,
-        loggedBy: userId,
+        changeAmount: validatedData.changeAmount,
+        newBalance,
+        notes: validatedData.notes,
+        userId,
       },
     });
 
@@ -225,7 +225,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
@@ -241,10 +241,9 @@ export async function POST(
 // DELETE /api/facility/placements/[id] - Soft delete placement
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -262,7 +261,7 @@ export async function DELETE(
     // Verify ownership
     const placement = await prisma.facilityProductPlacement.findFirst({
       where: {
-        id: id,
+        id: params.id,
         facilityCampaign: {
           facilityId: facility.id,
         },
@@ -275,7 +274,7 @@ export async function DELETE(
 
     // Hard delete since FacilityProductPlacement doesn't have deletedAt field
     await prisma.facilityProductPlacement.delete({
-      where: { id: id },
+      where: { id: params.id },
     });
 
     return NextResponse.json({ message: 'Placement deleted successfully' });

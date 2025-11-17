@@ -21,10 +21,9 @@ const updateCampaignSchema = z.object({
 // GET /api/manufacturer/campaigns/[id] - Get campaign details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -44,7 +43,7 @@ export async function GET(
 
     const campaign = await prisma.campaign.findFirst({
       where: {
-        id: id,
+        id: params.id,
         manufacturerId: manufacturer.id,
         deletedAt: null,
       },
@@ -121,10 +120,9 @@ export async function GET(
 // PUT /api/manufacturer/campaigns/[id] - Update campaign
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -145,7 +143,7 @@ export async function PUT(
     // Check if campaign exists and belongs to this manufacturer
     const existingCampaign = await prisma.campaign.findFirst({
       where: {
-        id: id,
+        id: params.id,
         manufacturerId: manufacturer.id,
         deletedAt: null,
       },
@@ -158,16 +156,16 @@ export async function PUT(
       );
     }
 
-    // Only allow editing draft or pending campaigns
-    // Note: Rejected campaigns are set back to draft status
+    // Only allow editing draft or rejected campaigns, or specific fields for approved campaigns
     if (
       existingCampaign.status !== CampaignStatus.draft &&
+      existingCampaign.status !== CampaignStatus.rejected &&
       existingCampaign.status !== CampaignStatus.pending
     ) {
       return NextResponse.json(
         {
           error:
-            'アクティブまたは終了したキャンペーンは編集できません。下書きまたは承認待ちのキャンペーンのみ編集可能です。',
+            'アクティブまたは終了したキャンペーンは編集できません。下書き、却下済み、承認待ちのキャンペーンのみ編集可能です。',
         },
         { status: 403 }
       );
@@ -230,7 +228,7 @@ export async function PUT(
 
     // Update campaign
     const campaign = await prisma.campaign.update({
-      where: { id: id },
+      where: { id: params.id },
       data: updateData,
     });
 
@@ -238,7 +236,7 @@ export async function PUT(
     if (validatedData.productIds) {
       // Delete existing campaign products
       await prisma.campaignProduct.deleteMany({
-        where: { campaignId: id },
+        where: { campaignId: params.id },
       });
 
       // Add new products
@@ -246,7 +244,7 @@ export async function PUT(
         validatedData.productIds.map((productId, index) =>
           prisma.campaignProduct.create({
             data: {
-              campaignId: id,
+              campaignId: params.id,
               productId,
               unitsAllocated: Math.floor(
                 (validatedData.totalUnits || existingCampaign.totalUnits) /
@@ -273,7 +271,7 @@ export async function PUT(
 
     // Fetch updated campaign with relations
     const updatedCampaign = await prisma.campaign.findUnique({
-      where: { id: id },
+      where: { id: params.id },
       include: {
         campaignProducts: {
           include: {
@@ -293,7 +291,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.issues },
+        { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
@@ -309,10 +307,9 @@ export async function PUT(
 // DELETE /api/manufacturer/campaigns/[id] - Soft delete campaign
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const userId = request.headers.get('x-user-id');
 
     if (!userId) {
@@ -333,7 +330,7 @@ export async function DELETE(
     // Check if campaign exists and belongs to this manufacturer
     const campaign = await prisma.campaign.findFirst({
       where: {
-        id: id,
+        id: params.id,
         manufacturerId: manufacturer.id,
         deletedAt: null,
       },
@@ -366,7 +363,7 @@ export async function DELETE(
 
     // Soft delete campaign
     await prisma.campaign.update({
-      where: { id: id },
+      where: { id: params.id },
       data: {
         deletedAt: new Date(),
       },

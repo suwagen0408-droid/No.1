@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: '入力データが正しくありません', details: error.errors },
+        { error: '入力データが正しくありません', details: error.issues },
         { status: 400 }
       );
     }

@@ -51,8 +51,7 @@ export async function GET(request: NextRequest) {
             facilityName: true,
             facilityType: true,
             address: true,
-            monthlyGuests: true,
-            facilityTags: true,
+            avgMonthlyGuests: true,
           },
         },
         campaign: {
@@ -64,7 +63,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        appliedAt: 'desc',
+        createdAt: 'desc',
       },
     });
 
@@ -218,7 +217,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 }
       );
     }

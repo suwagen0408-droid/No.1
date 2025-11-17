@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
         OR: [
           { status: CampaignStatus.approved },
           { status: CampaignStatus.active },
-          { status: CampaignStatus.rejected },
           { status: CampaignStatus.completed },
         ],
       },
@@ -140,7 +139,8 @@ export async function POST(request: NextRequest) {
         newStatus = CampaignStatus.approved;
       }
     } else {
-      newStatus = CampaignStatus.rejected;
+      // When rejecting, set back to draft so it can be resubmitted
+      newStatus = CampaignStatus.draft;
     }
 
     // Update campaign

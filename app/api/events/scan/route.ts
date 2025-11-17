@@ -36,8 +36,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'QR code not found' }, { status: 404 });
     }
 
-    if (!qrCode.isActive) {
-      return NextResponse.json({ error: 'QR code is inactive' }, { status: 400 });
+    // Check if QR code is expired
+    if (qrCode.expiresAt && new Date() > qrCode.expiresAt) {
+      return NextResponse.json({ error: 'QR code has expired' }, { status: 400 });
     }
 
     // Create scan event
@@ -45,26 +46,16 @@ export async function POST(request: NextRequest) {
       data: {
         qrCodeId: validatedData.qrCodeId,
         productId: qrCode.facilityProductPlacement.productId,
-        facilityId: qrCode.facilityProductPlacement.facilityCampaignId
-          ? qrCode.facilityProductPlacement.facilityCampaign?.facilityId
-          : null,
-        campaignId: qrCode.facilityProductPlacement.facilityCampaign?.campaignId,
-        userAgent: validatedData.userAgent,
-        ipAddress: validatedData.ipAddress,
-        location: validatedData.location,
+        facilityId: qrCode.facilityId, // Use facilityId from QrCode
+        facilityProductPlacementId: qrCode.facilityProductPlacementId,
+        campaignId: qrCode.campaignId || null,
+        userAgent: validatedData.userAgent || null,
+        ipHash: validatedData.ipAddress ? validatedData.ipAddress.substring(0, 64) : null, // Hash or truncate IP
+        sessionId: validatedData.ipAddress || null, // Use IP as session for now
       },
     });
 
-    // Update QR code scan count
-    await prisma.qrCode.update({
-      where: { id: validatedData.qrCodeId },
-      data: {
-        scanCount: {
-          increment: 1,
-        },
-        lastScannedAt: new Date(),
-      },
-    });
+    // Note: Scan count can be derived from qrScanEvents count
 
     return NextResponse.json(
       {
@@ -82,7 +73,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 }
       );
     }

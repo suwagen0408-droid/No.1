@@ -56,8 +56,6 @@ export async function GET(request: NextRequest) {
         _count: {
           select: {
             qrScanEvents: true,
-            clickEvents: true,
-            purchaseEvents: true,
           },
         },
       },
@@ -103,10 +101,14 @@ export async function POST(request: NextRequest) {
         facilityCampaign: {
           facilityId: facility.id,
         },
-        deletedAt: null,
       },
       include: {
         product: true,
+        facilityCampaign: {
+          select: {
+            campaignId: true,
+          },
+        },
       },
     });
 
@@ -117,21 +119,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique QR code ID
-    const qrCodeId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate unique code string
+    const codeString = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // In production, you would generate actual QR code image here
     // For now, we'll just store a URL that points to the landing page
-    const qrCodeUrl = `https://essc-platform.com/product/${qrCodeId}`;
+    const qrCodeUrl = `https://essc-platform.com/product/${codeString}`;
 
-    // Create QR code
+    // Create QR code with required schema fields
     const qrCode = await prisma.qrCode.create({
       data: {
-        id: qrCodeId,
+        codeString,
+        url: qrCodeUrl,
+        productId: placement.productId,
+        facilityId: facility.id,
         facilityProductPlacementId: validatedData.facilityProductPlacementId,
-        qrCodeUrl,
-        label: validatedData.label,
-        isActive: true,
+        campaignId: placement.facilityCampaign.campaignId,
       },
       include: {
         facilityProductPlacement: {

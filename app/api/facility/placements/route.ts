@@ -8,7 +8,6 @@ const placementSchema = z.object({
   locationLabel: z.string().min(1),
   initialUnits: z.number().int().min(1),
   reorderThreshold: z.number().int().min(0).default(5),
-  notes: z.string().optional(),
 });
 
 // GET /api/facility/placements - Get all placements for facility
@@ -59,13 +58,15 @@ export async function GET(request: NextRequest) {
           },
         },
         qrCodes: {
-          where: {
-            isActive: true,
-          },
           select: {
             id: true,
-            qrCodeUrl: true,
-            scanCount: true,
+            url: true,
+            codeString: true,
+            _count: {
+              select: {
+                qrScanEvents: true,
+              },
+            },
           },
         },
       },
@@ -151,7 +152,6 @@ export async function POST(request: NextRequest) {
         initialUnits: validatedData.initialUnits,
         currentUnits: validatedData.initialUnits,
         reorderThreshold: validatedData.reorderThreshold,
-        notes: validatedData.notes,
       },
       include: {
         product: {
@@ -178,10 +178,11 @@ export async function POST(request: NextRequest) {
       data: {
         facilityProductPlacementId: placement.id,
         changeType: 'initial',
-        changeAmount: validatedData.initialUnits,
-        newBalance: validatedData.initialUnits,
-        notes: 'Initial placement',
-        userId,
+        quantity: validatedData.initialUnits,
+        beforeUnits: 0,
+        afterUnits: validatedData.initialUnits,
+        note: 'Initial placement',
+        loggedBy: userId,
       },
     });
 

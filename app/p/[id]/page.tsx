@@ -230,13 +230,8 @@ function ProductLandingContent() {
             )}
           </div>
 
-          {/* DEBUG: This should be visible before reviews section */}
-          <div className="bg-red-600 text-white text-center p-8 mb-4 text-2xl font-bold">
-            🔴 デバッグ: ここが見えますか？ DEBUG: Can you see this?
-          </div>
-
           {/* Reviews Section */}
-          <div id="reviews" className="bg-yellow-50 border-4 border-red-500 rounded-lg shadow-sm p-4 sm:p-8">
+          <div id="reviews" className="bg-white rounded-lg shadow-sm p-4 sm:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                 カスタマーレビュー ({reviewStats.totalReviews})

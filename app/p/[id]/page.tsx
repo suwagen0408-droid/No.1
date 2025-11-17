@@ -208,16 +208,6 @@ function ProductLandingContent() {
                   <p className="text-sm text-gray-600 mb-1">販売元</p>
                   <p className="font-semibold text-gray-900">{product.manufacturer.companyName}</p>
                 </div>
-
-                {/* Review Link */}
-                <div className="mt-4 pt-4 border-t">
-                  <a
-                    href="#reviews"
-                    className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm"
-                  >
-                    ⭐ レビューを見る / 書く →
-                  </a>
-                </div>
               </div>
             </div>
 

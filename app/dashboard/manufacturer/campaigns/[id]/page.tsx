@@ -190,6 +190,14 @@ export default function CampaignDetailPage() {
                 施設からの応募を承認・却下します
               </p>
             </div>
+            <div className="flex space-x-2">
+              <Link
+                href={`/dashboard/manufacturer/campaigns/${campaignId}/edit`}
+                className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50"
+              >
+                キャンペーンを編集
+              </Link>
+            </div>
           </div>
         </div>
 

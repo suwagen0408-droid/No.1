@@ -149,10 +149,9 @@ export default function ManufacturerCampaignsPage() {
             ) : (
               <div className="grid grid-cols-1 gap-6">
                 {campaigns.map((campaign) => (
-                  <Link
+                  <div
                     key={campaign.id}
-                    href={`/dashboard/manufacturer/campaigns/${campaign.id}`}
-                    className="border rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    className="border rounded-lg p-6 hover:shadow-lg transition-shadow relative"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -227,7 +226,27 @@ export default function ManufacturerCampaignsPage() {
                         </div>
                       </div>
                     </div>
-                  </Link>
+
+                    {/* Action buttons */}
+                    <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
+                      <Link
+                        href={`/dashboard/manufacturer/campaigns/${campaign.id}`}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded hover:bg-gray-50"
+                      >
+                        詳細
+                      </Link>
+                      {(campaign.status === 'draft' ||
+                        campaign.status === 'rejected' ||
+                        campaign.status === 'pending') && (
+                        <Link
+                          href={`/dashboard/manufacturer/campaigns/${campaign.id}/edit`}
+                          className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded hover:bg-blue-50"
+                        >
+                          編集
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

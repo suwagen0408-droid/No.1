@@ -208,6 +208,16 @@ function ProductLandingContent() {
                   <p className="text-sm text-gray-600 mb-1">販売元</p>
                   <p className="font-semibold text-gray-900">{product.manufacturer.companyName}</p>
                 </div>
+
+                {/* Review Link */}
+                <div className="mt-4 pt-4 border-t">
+                  <a
+                    href="#reviews"
+                    className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm"
+                  >
+                    ⭐ レビューを見る / 書く →
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -221,14 +231,14 @@ function ProductLandingContent() {
           </div>
 
           {/* Reviews Section */}
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+          <div id="reviews" className="bg-white rounded-lg shadow-sm p-4 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                 カスタマーレビュー ({reviewStats.totalReviews})
               </h2>
               <button
                 onClick={() => setShowReviewForm(!showReviewForm)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium w-full sm:w-auto"
               >
                 {showReviewForm ? 'キャンセル' : 'レビューを書く'}
               </button>

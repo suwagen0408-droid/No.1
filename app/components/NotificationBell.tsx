@@ -35,7 +35,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications.slice(0, 5)); // Show only 5 recent
-        setUnreadCount(data.notifications.filter((n: Notification) => !n.readAt).length);
+        setUnreadCount(data.unreadCount); // Use unreadCount from API response
       }
     } catch (error) {
       console.error('通知の読み込みエラー:', error);

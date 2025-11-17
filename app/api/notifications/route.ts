@@ -21,11 +21,11 @@ export async function GET(request: NextRequest) {
       take: 50, // Limit to 50 most recent notifications
     });
 
-    // Count unread notifications
+    // Count unread notifications (readAt is null means unread)
     const unreadCount = await prisma.notification.count({
       where: {
         userId,
-        isRead: false,
+        readAt: null,
       },
     });
 
@@ -59,10 +59,9 @@ export async function POST(request: NextRequest) {
       await prisma.notification.updateMany({
         where: {
           userId,
-          isRead: false,
+          readAt: null,
         },
         data: {
-          isRead: true,
           readAt: new Date(),
         },
       });
@@ -74,7 +73,6 @@ export async function POST(request: NextRequest) {
           userId, // Ensure notifications belong to the user
         },
         data: {
-          isRead: true,
           readAt: new Date(),
         },
       });

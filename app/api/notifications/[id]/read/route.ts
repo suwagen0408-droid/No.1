@@ -21,7 +21,6 @@ export async function POST(
         userId: userId,
       },
       data: {
-        isRead: true,
         readAt: new Date(),
       },
     });

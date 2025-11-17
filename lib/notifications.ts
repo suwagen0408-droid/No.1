@@ -171,10 +171,19 @@ export async function notifyAdminsNewAccount(role: string, companyName: string) 
 
 export async function notifyAdminsNewProduct(productName: string, manufacturerName: string) {
   try {
+    console.log('[Notification] Notifying admins about new product:', productName);
+    
     const admins = await prisma.user.findMany({
       where: { role: 'admin' },
-      select: { id: true },
+      select: { id: true, email: true },
     });
+
+    console.log('[Notification] Found admins:', admins.length, admins.map(a => a.email));
+
+    if (admins.length === 0) {
+      console.warn('[Notification] No admin users found!');
+      return;
+    }
 
     const notifications = admins.map((admin) =>
       createNotification({
@@ -185,7 +194,8 @@ export async function notifyAdminsNewProduct(productName: string, manufacturerNa
       })
     );
 
-    await Promise.all(notifications);
+    const results = await Promise.all(notifications);
+    console.log('[Notification] Created notifications:', results.filter(r => r).length);
   } catch (error) {
     console.error('管理者への通知エラー:', error);
   }
@@ -193,10 +203,19 @@ export async function notifyAdminsNewProduct(productName: string, manufacturerNa
 
 export async function notifyAdminsNewCampaign(campaignName: string, manufacturerName: string) {
   try {
+    console.log('[Notification] Notifying admins about new campaign:', campaignName);
+    
     const admins = await prisma.user.findMany({
       where: { role: 'admin' },
-      select: { id: true },
+      select: { id: true, email: true },
     });
+
+    console.log('[Notification] Found admins:', admins.length, admins.map(a => a.email));
+
+    if (admins.length === 0) {
+      console.warn('[Notification] No admin users found!');
+      return;
+    }
 
     const notifications = admins.map((admin) =>
       createNotification({
@@ -207,7 +226,8 @@ export async function notifyAdminsNewCampaign(campaignName: string, manufacturer
       })
     );
 
-    await Promise.all(notifications);
+    const results = await Promise.all(notifications);
+    console.log('[Notification] Created notifications:', results.filter(r => r).length);
   } catch (error) {
     console.error('管理者への通知エラー:', error);
   }

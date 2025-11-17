@@ -32,17 +32,18 @@
 
 ## 🛠 技術スタック
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
+- **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind CSS 4
 - **Backend**: Next.js API Routes
-- **Database**: PostgreSQL + Prisma ORM
-- **Authentication**: bcryptjs (JWT実装予定)
+- **Database**: SQLite (開発環境) / PostgreSQL (本番推奨) + Prisma ORM 6.19.0
+- **Authentication**: bcryptjs + localStorage (JWT実装予定)
 - **Validation**: Zod
 
 ## 📦 セットアップ
 
 ### 前提条件
 - Node.js 18以上
-- PostgreSQL 14以上
+- SQLite (開発環境、自動セットアップ)
+- PostgreSQL 14以上 (本番環境推奨)
 
 ### インストール手順
 
@@ -52,29 +53,34 @@ npm install
 ```
 
 2. **環境変数の設定**
-`.env`ファイルを作成し、データベース接続情報を設定:
+`.env`ファイルを作成（開発環境用、既に設定済み）:
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/essc_dev?schema=public"
+DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-key-change-this-in-production"
 NEXTAUTH_URL="http://localhost:3000"
 NODE_ENV="development"
 ```
 
+**本番環境用（PostgreSQL）**:
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/essc_prod?schema=public"
+```
+
 3. **データベースのセットアップ**
-
-PostgreSQLデータベースを作成:
-```bash
-createdb essc_dev
-```
-
-Prismaマイグレーションを実行:
-```bash
-npx prisma migrate dev --name init
-```
 
 Prisma Clientを生成:
 ```bash
 npx prisma generate
+```
+
+データベースをプッシュ（スキーマ適用）:
+```bash
+npx prisma db push
+```
+
+テストデータをシード（オプション）:
+```bash
+npx ts-node scripts/seed.ts
 ```
 
 4. **開発サーバーの起動**
@@ -129,6 +135,25 @@ npm run dev
 - 商品情報を閲覧
 - 「購入する」ボタンからECサイトへ遷移
 
+### 6. 管理者の場合（✅ 実装済み）
+1. **承認管理** (`/dashboard/approvals`)
+   - アカウント承認（メーカー・施設）
+   - 商品承認
+   - キャンペーン承認
+   - 却下理由の入力
+   - 処理履歴の確認
+
+2. **全体分析** (`/dashboard/analytics`)
+   - KPI表示（ユーザー数、商品数、キャンペーン数、スキャン数）
+   - コンバージョン率分析
+   - 売上統計
+   - トップパフォーマー表示
+   - 月次トレンド分析
+
+**テストアカウント**:
+- Email: `admin@essc.local`
+- Password: `admin123`
+
 ## 🗄 Prisma Studio
 
 データベースをGUIで確認・編集:
@@ -143,6 +168,15 @@ http://localhost:5555 でPrisma Studioが起動します。
 ### 認証
 - `POST /api/auth/signup` - 新規登録
 - `POST /api/auth/login` - ログイン
+
+### 管理者機能（✅ 実装済み）
+- `GET /api/admin/approvals/accounts` - アカウント承認待ちリスト取得
+- `POST /api/admin/approvals/accounts` - アカウント承認/却下
+- `GET /api/admin/approvals/products` - 商品承認待ちリスト取得
+- `POST /api/admin/approvals/products` - 商品承認/却下
+- `GET /api/admin/approvals/campaigns` - キャンペーン承認待ちリスト取得
+- `POST /api/admin/approvals/campaigns` - キャンペーン承認/却下
+- `GET /api/admin/analytics` - 全体統計データ取得
 
 ### 今後実装予定
 - `GET /api/products` - 商品一覧取得
@@ -203,10 +237,10 @@ npm start
 - [ ] クリックイベント記録
 - [ ] 基本レポート機能
 
-### Phase 4: 管理者機能
-- [ ] アカウント承認フロー
-- [ ] 商品・キャンペーン承認
-- [ ] 全体ダッシュボード
+### Phase 4: 管理者機能（✅ 完了）
+- [x] アカウント承認フロー
+- [x] 商品・キャンペーン承認
+- [x] 全体ダッシュボード（KPI・分析）
 
 ### Phase 5: 高度な機能
 - [ ] 購入イベント連携（Webhook）

@@ -78,7 +78,13 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            campaignProducts: true,
+            campaignProducts: {
+              where: {
+                campaign: {
+                  deletedAt: null,
+                },
+              },
+            },
             qrScanEvents: true,
             purchaseEvents: true,
           },

@@ -159,15 +159,14 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get('host') || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
     
-    // Create URL that points to the product landing PAGE (not API)
-    // We'll use the QR code ID (will be generated) in the URL
-    const qrCodeUrl = `${baseUrl}/product/PLACEHOLDER_ID`;
+    // Create URL that points to the product landing page with reviews
+    const qrCodeUrl = `${baseUrl}/p/${placement.productId}`;
 
-    // Create QR code with required schema fields (with placeholder URL first)
+    // Create QR code pointing directly to the product landing page
     const qrCode = await prisma.qrCode.create({
       data: {
         codeString,
-        url: qrCodeUrl, // Will be updated below
+        url: qrCodeUrl,
         productId: placement.productId,
         facilityId: facility.id,
         facilityProductPlacementId: validatedData.facilityProductPlacementId,
@@ -187,23 +186,13 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-    
-    // Update the URL with the actual QR code ID (pointing to landing page, not API)
-    const actualQrCodeUrl = `${baseUrl}/product/${qrCode.id}`;
-    await prisma.qrCode.update({
-      where: { id: qrCode.id },
-      data: { url: actualQrCodeUrl },
-    });
 
     return NextResponse.json(
       {
-        qrCode: {
-          ...qrCode,
-          url: actualQrCodeUrl, // Return the updated URL
-        },
+        qrCode,
         message: 'QR code generated successfully',
-        // Generate QR code image using the actual URL
-        qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(actualQrCodeUrl)}`,
+        // Generate QR code image using the product landing page URL
+        qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCodeUrl)}`,
       },
       { status: 201 }
     );

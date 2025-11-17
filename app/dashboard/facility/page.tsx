@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface FacilityStats {
   campaigns: {
@@ -113,24 +114,25 @@ export default function FacilityDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">施設ダッシュボード</h1>
-          <p className="mt-2 text-gray-600">
-            キャンペーン参加状況と商品パフォーマンスを確認できます
-          </p>
+    <DashboardLayout user={user}>
+      <div className="bg-white rounded-lg shadow">
+        {/* Header */}
+        <div className="border-b">
+          <div className="px-6 py-6">
+            <h1 className="text-3xl font-bold text-gray-900">施設ダッシュボード</h1>
+            <p className="mt-2 text-gray-600">
+              キャンペーン参加状況と商品パフォーマンスを確認できます
+            </p>
+          </div>
         </div>
-      </div>
 
-      {loading ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">データを読み込んでいます...</p>
-        </div>
-      ) : (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {loading ? (
+          <div className="px-6 py-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">データを読み込んでいます...</p>
+          </div>
+        ) : (
+          <div className="px-6 py-8 space-y-8">
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Campaigns */}
@@ -462,6 +464,7 @@ export default function FacilityDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

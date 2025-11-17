@@ -459,7 +459,7 @@ export default function ApprovalsPage() {
                                     </p>
                                   )}
                                 </div>
-                                <div>
+                                <div className="flex items-center space-x-3">
                                   <span
                                     className={`px-3 py-1 rounded-full text-sm font-medium ${
                                       acc.status === 'active'
@@ -469,6 +469,31 @@ export default function ApprovalsPage() {
                                   >
                                     {acc.status === 'active' ? '承認済み' : '却下'}
                                   </span>
+                                  {acc.manufacturer && (
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm(`${acc.manufacturer?.companyName}を削除しますか？`)) {
+                                          try {
+                                            const response = await fetch(`/api/admin/manufacturers/${acc.manufacturer.id}`, {
+                                              method: 'DELETE',
+                                              headers: { 'x-user-id': user.id },
+                                            });
+                                            if (response.ok) {
+                                              alert('削除しました');
+                                              loadAccounts();
+                                            } else {
+                                              alert('削除に失敗しました');
+                                            }
+                                          } catch (error) {
+                                            alert('削除に失敗しました');
+                                          }
+                                        }
+                                      }}
+                                      className="px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-300 rounded hover:bg-red-50"
+                                    >
+                                      削除
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </li>
@@ -567,7 +592,7 @@ export default function ApprovalsPage() {
                                     </p>
                                   )}
                                 </div>
-                                <div>
+                                <div className="flex items-center space-x-3">
                                   <span
                                     className={`px-3 py-1 rounded-full text-sm font-medium ${
                                       product.status === 'approved'
@@ -577,6 +602,29 @@ export default function ApprovalsPage() {
                                   >
                                     {product.status === 'approved' ? '承認済み' : '却下'}
                                   </span>
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm(`${product.name}を削除しますか？`)) {
+                                        try {
+                                          const response = await fetch(`/api/admin/products/${product.id}`, {
+                                            method: 'DELETE',
+                                            headers: { 'x-user-id': user.id },
+                                          });
+                                          if (response.ok) {
+                                            alert('削除しました');
+                                            loadProducts();
+                                          } else {
+                                            alert('削除に失敗しました');
+                                          }
+                                        } catch (error) {
+                                          alert('削除に失敗しました');
+                                        }
+                                      }
+                                    }}
+                                    className="px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-300 rounded hover:bg-red-50"
+                                  >
+                                    削除
+                                  </button>
                                 </div>
                               </div>
                             </li>
@@ -684,7 +732,7 @@ export default function ApprovalsPage() {
                                     </p>
                                   )}
                                 </div>
-                                <div>
+                                <div className="flex items-center space-x-3">
                                   <span
                                     className={`px-3 py-1 rounded-full text-sm font-medium ${
                                       campaign.status === 'approved' || campaign.status === 'active'
@@ -696,6 +744,29 @@ export default function ApprovalsPage() {
                                       ? '承認済み'
                                       : '却下'}
                                   </span>
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm(`${campaign.name}を削除しますか？`)) {
+                                        try {
+                                          const response = await fetch(`/api/admin/campaigns/${campaign.id}`, {
+                                            method: 'DELETE',
+                                            headers: { 'x-user-id': user.id },
+                                          });
+                                          if (response.ok) {
+                                            alert('削除しました');
+                                            loadCampaigns();
+                                          } else {
+                                            alert('削除に失敗しました');
+                                          }
+                                        } catch (error) {
+                                          alert('削除に失敗しました');
+                                        }
+                                      }
+                                    }}
+                                    className="px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-300 rounded hover:bg-red-50"
+                                  >
+                                    削除
+                                  </button>
                                 </div>
                               </div>
                             </li>

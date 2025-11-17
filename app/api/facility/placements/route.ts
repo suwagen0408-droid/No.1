@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
         facilityCampaign: {
           facilityId: facility.id,
         },
-        deletedAt: null,
       },
       include: {
         product: {

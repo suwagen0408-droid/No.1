@@ -182,7 +182,8 @@ export default function ApprovalsPage() {
         loadData(activeTab);
       } else {
         const error = await response.json();
-        alert(`エラー: ${error.error}`);
+        console.error('Approval error:', error);
+        alert(`エラー: ${error.error}${error.details ? '\n詳細: ' + error.details : ''}`);
       }
     } catch (error) {
       console.error('Error approving:', error);

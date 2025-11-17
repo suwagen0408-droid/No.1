@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { CampaignStatus } from '@prisma/client';
 
 // GET /api/facility/campaigns - Browse available campaigns
 export async function GET(request: NextRequest) {
@@ -24,7 +25,10 @@ export async function GET(request: NextRequest) {
     // Get all approved/active campaigns
     const campaigns = await prisma.campaign.findMany({
       where: {
-        status: { in: ['approved', 'active'] },
+        OR: [
+          { status: CampaignStatus.approved },
+          { status: CampaignStatus.active },
+        ],
         deletedAt: null,
         // Filter by date - only show current and future campaigns
         endDate: {

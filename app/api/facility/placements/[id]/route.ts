@@ -41,7 +41,6 @@ export async function GET(
         facilityCampaign: {
           facilityId: facility.id,
         },
-        deletedAt: null,
       },
       include: {
         product: true,
@@ -115,7 +114,6 @@ export async function PUT(
         facilityCampaign: {
           facilityId: facility.id,
         },
-        deletedAt: null,
       },
     });
 
@@ -183,7 +181,6 @@ export async function POST(
         facilityCampaign: {
           facilityId: facility.id,
         },
-        deletedAt: null,
       },
     });
 
@@ -268,7 +265,6 @@ export async function DELETE(
         facilityCampaign: {
           facilityId: facility.id,
         },
-        deletedAt: null,
       },
     });
 
@@ -276,11 +272,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Placement not found' }, { status: 404 });
     }
 
-    await prisma.facilityProductPlacement.update({
+    // Hard delete since FacilityProductPlacement doesn't have deletedAt field
+    await prisma.facilityProductPlacement.delete({
       where: { id: params.id },
-      data: {
-        deletedAt: new Date(),
-      },
     });
 
     return NextResponse.json({ message: 'Placement deleted successfully' });

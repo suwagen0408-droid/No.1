@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { CampaignStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
     // Get pending campaigns
     const pendingCampaigns = await prisma.campaign.findMany({
       where: {
-        status: 'pending',
+        status: CampaignStatus.pending,
       },
       include: {
         manufacturer: {
@@ -32,7 +33,12 @@ export async function GET(request: NextRequest) {
     // Get recently processed campaigns (last 20)
     const processedCampaigns = await prisma.campaign.findMany({
       where: {
-        status: { in: ['approved', 'active', 'rejected', 'completed'] },
+        OR: [
+          { status: CampaignStatus.approved },
+          { status: CampaignStatus.active },
+          { status: CampaignStatus.rejected },
+          { status: CampaignStatus.completed },
+        ],
       },
       include: {
         manufacturer: {
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (campaign.status !== 'pending') {
+    if (campaign.status !== CampaignStatus.pending) {
       return NextResponse.json(
         { error: 'Campaign is not pending approval' },
         { status: 400 }
@@ -119,7 +125,23 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date();
-    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    
+    // Determine new status - if campaign is starting now or already started, set to active
+    let newStatus: CampaignStatus;
+    if (action === 'approve') {
+      const startDate = new Date(campaign.startDate);
+      const endDate = new Date(campaign.endDate);
+      
+      if (now >= startDate && now <= endDate) {
+        newStatus = CampaignStatus.active;
+      } else if (now > endDate) {
+        newStatus = CampaignStatus.completed;
+      } else {
+        newStatus = CampaignStatus.approved;
+      }
+    } else {
+      newStatus = CampaignStatus.rejected;
+    }
 
     // Update campaign
     const updatedCampaign = await prisma.campaign.update({
@@ -167,10 +189,13 @@ export async function POST(request: NextRequest) {
       message: `Campaign ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
       campaign: updatedCampaign,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing campaign approval:', error);
     return NextResponse.json(
-      { error: 'Failed to process campaign approval' },
+      { 
+        error: 'Failed to process campaign approval',
+        details: error.message || String(error)
+      },
       { status: 500 }
     );
   }

@@ -65,6 +65,8 @@ export default function ProductsPage() {
     ecUrl: '',
     shortDescription: '',
   });
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -163,6 +165,64 @@ export default function ProductsPage() {
     } catch (error) {
       console.error('Error deleting product:', error);
       alert('商品の削除に失敗しました');
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev: any) => ({ ...prev, mainImageUrl: data.imageUrl }));
+        alert('画像をアップロードしました');
+      } else {
+        const error = await response.json();
+        alert(`エラー: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('画像のアップロードに失敗しました');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageUpload(e.target.files[0]);
     }
   };
 
@@ -443,20 +503,103 @@ export default function ProductsPage() {
                   />
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    商品画像URL
+                    商品画像
                   </label>
-                  <input
-                    type="url"
-                    value={formData.mainImageUrl || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, mainImageUrl: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                      dragActive
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    {formData.mainImageUrl ? (
+                      <div className="space-y-3">
+                        <img
+                          src={formData.mainImageUrl}
+                          alt="商品画像プレビュー"
+                          className="mx-auto h-32 w-32 object-cover rounded-lg"
+                        />
+                        <div className="text-sm text-gray-600">
+                          画像をドラッグ&ドロップして変更
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, mainImageUrl: '' })}
+                          className="text-sm text-red-600 hover:text-red-700"
+                        >
+                          画像を削除
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="mt-4">
+                          <label
+                            htmlFor="file-upload"
+                            className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            ファイルを選択
+                          </label>
+                          <input
+                            id="file-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileInput}
+                            className="sr-only"
+                          />
+                          <span className="text-gray-600"> または画像をドラッグ&ドロップ</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          PNG, JPG, GIF 最大5MB
+                        </p>
+                      </>
+                    )}
+                    {uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg">
+                        <div className="text-center">
+                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <p className="mt-2 text-sm text-gray-600">アップロード中...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Or URL Input */}
+                  <div className="mt-3">
+                    <label className="block text-xs text-gray-500 mb-1">
+                      または画像URLを直接入力:
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.mainImageUrl || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, mainImageUrl: e.target.value })
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
                 </div>
 
                 {/* Actions */}

@@ -170,6 +170,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Notify admins about new product
+    const { notifyAdminsNewProduct } = await import('@/lib/notifications');
+    await notifyAdminsNewProduct(product.name, manufacturer.companyName);
+
     return NextResponse.json(
       { 
         product,

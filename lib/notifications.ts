@@ -145,3 +145,70 @@ export async function notifyPurchaseMade(userId: string, productName: string, fa
     message: `「${facilityName}」で「${productName}」が購入されました。`,
   });
 }
+
+// Admin notification helpers
+export async function notifyAdminsNewAccount(role: string, companyName: string) {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: { id: true },
+    });
+
+    const notifications = admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'system',
+        title: '新規アカウント登録',
+        message: `新しい${role === 'manufacturer' ? 'メーカー' : '施設'}アカウント「${companyName}」が登録されました。承認をお待ちしています。`,
+      })
+    );
+
+    await Promise.all(notifications);
+  } catch (error) {
+    console.error('管理者への通知エラー:', error);
+  }
+}
+
+export async function notifyAdminsNewProduct(productName: string, manufacturerName: string) {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: { id: true },
+    });
+
+    const notifications = admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'system',
+        title: '新規商品登録',
+        message: `「${manufacturerName}」が新商品「${productName}」を登録しました。承認をお待ちしています。`,
+      })
+    );
+
+    await Promise.all(notifications);
+  } catch (error) {
+    console.error('管理者への通知エラー:', error);
+  }
+}
+
+export async function notifyAdminsNewCampaign(campaignName: string, manufacturerName: string) {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: { id: true },
+    });
+
+    const notifications = admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'system',
+        title: '新規キャンペーン申請',
+        message: `「${manufacturerName}」が新キャンペーン「${campaignName}」を申請しました。承認をお待ちしています。`,
+      })
+    );
+
+    await Promise.all(notifications);
+  } catch (error) {
+    console.error('管理者への通知エラー:', error);
+  }
+}

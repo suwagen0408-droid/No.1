@@ -5,66 +5,90 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get('x-user-id');
+
     if (!userId) {
-      return NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const unreadOnly = searchParams.get('unreadOnly') === 'true';
-
+    // Get all notifications for the user
     const notifications = await prisma.notification.findMany({
       where: {
         userId,
-        ...(unreadOnly ? { readAt: null } : {}),
       },
       orderBy: {
         createdAt: 'desc',
       },
-      take: 50,
+      take: 50, // Limit to 50 most recent notifications
     });
 
-    return NextResponse.json(
-      { notifications },
-      { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-    );
+    // Count unread notifications
+    const unreadCount = await prisma.notification.count({
+      where: {
+        userId,
+        isRead: false,
+      },
+    });
+
+    return NextResponse.json({
+      notifications,
+      unreadCount,
+    });
   } catch (error) {
-    console.error('通知取得エラー:', error);
+    console.error('Error fetching notifications:', error);
     return NextResponse.json(
-      { error: '通知の取得に失敗しました' },
-      { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      { error: 'Failed to fetch notifications' },
+      { status: 500 }
     );
   }
 }
 
-// POST /api/notifications - Create notification (internal use)
+// POST /api/notifications - Mark notifications as read
 export async function POST(request: NextRequest) {
   try {
+    const userId = request.headers.get('x-user-id');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { userId, type, title, message, relatedResourceType, relatedResourceId } = body;
+    const { notificationIds, markAllAsRead } = body;
 
-    const notification = await prisma.notification.create({
-      data: {
-        userId,
-        type,
-        title,
-        message,
-        relatedResourceType,
-        relatedResourceId,
-      },
+    if (markAllAsRead) {
+      // Mark all notifications as read
+      await prisma.notification.updateMany({
+        where: {
+          userId,
+          isRead: false,
+        },
+        data: {
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+    } else if (notificationIds && Array.isArray(notificationIds)) {
+      // Mark specific notifications as read
+      await prisma.notification.updateMany({
+        where: {
+          id: { in: notificationIds },
+          userId, // Ensure notifications belong to the user
+        },
+        data: {
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Notifications marked as read',
     });
-
-    return NextResponse.json(
-      { notification },
-      { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-    );
   } catch (error) {
-    console.error('通知作成エラー:', error);
+    console.error('Error marking notifications as read:', error);
     return NextResponse.json(
-      { error: '通知の作成に失敗しました' },
-      { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      { error: 'Failed to mark notifications as read' },
+      { status: 500 }
     );
   }
 }

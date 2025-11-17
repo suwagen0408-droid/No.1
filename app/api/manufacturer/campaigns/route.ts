@@ -243,6 +243,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Notify admins about new campaign
+    const { notifyAdminsNewCampaign } = await import('@/lib/notifications');
+    await notifyAdminsNewCampaign(campaign.name, manufacturer.companyName);
+
     // Fetch complete campaign data
     const completeCampaign = await prisma.campaign.findUnique({
       where: { id: campaign.id },

@@ -29,6 +29,8 @@ export default function MessagesPage() {
   const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<'received' | 'sent'>('received');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [receivedCount, setReceivedCount] = useState(0);
+  const [sentCount, setSentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
@@ -45,8 +47,9 @@ export default function MessagesPage() {
   useEffect(() => {
     if (user) {
       loadMessages();
+      loadMessageCounts();
     }
-  }, [tab, user]);
+  }, [tab, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMessages = async () => {
     if (!user) return;
@@ -69,6 +72,36 @@ export default function MessagesPage() {
       console.error('Failed to load messages:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMessageCounts = async () => {
+    if (!user) return;
+    
+    try {
+      // Load received count
+      const receivedResponse = await fetch('/api/messages?type=received', {
+        headers: {
+          'x-user-id': user.id,
+        },
+      });
+      if (receivedResponse.ok) {
+        const receivedData = await receivedResponse.json();
+        setReceivedCount(receivedData.messages?.length || 0);
+      }
+
+      // Load sent count
+      const sentResponse = await fetch('/api/messages?type=sent', {
+        headers: {
+          'x-user-id': user.id,
+        },
+      });
+      if (sentResponse.ok) {
+        const sentData = await sentResponse.json();
+        setSentCount(sentData.messages?.length || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load message counts:', error);
     }
   };
 
@@ -136,7 +169,7 @@ export default function MessagesPage() {
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
-              📥 受信箱 ({messages.length})
+              📥 受信箱 ({receivedCount})
             </button>
             <button
               onClick={() => setTab('sent')}
@@ -146,7 +179,7 @@ export default function MessagesPage() {
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
-              📤 送信済み ({messages.length})
+              📤 送信済み ({sentCount})
             </button>
           </div>
         </div>

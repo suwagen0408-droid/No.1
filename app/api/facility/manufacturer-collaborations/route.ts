@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
                 id: true,
                 companyName: true,
                 userId: true,
+                logoUrl: true,
               },
             },
           },
@@ -56,9 +57,7 @@ export async function GET(request: NextRequest) {
       const manufacturerId = collab.campaign.manufacturerId;
       if (!manufacturersMap.has(manufacturerId)) {
         manufacturersMap.set(manufacturerId, {
-          id: collab.campaign.manufacturer.id,
-          companyName: collab.campaign.manufacturer.companyName,
-          userId: collab.campaign.manufacturer.userId,
+          ...collab.campaign.manufacturer,
           campaigns: 1,
         });
       } else {

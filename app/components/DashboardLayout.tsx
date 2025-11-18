@@ -145,6 +145,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   支払い管理
                 </Link>
                 <Link
+                  href="/dashboard/facility/reviews"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  メーカーレビュー
+                </Link>
+                <Link
                   href="/dashboard/qrcodes"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >

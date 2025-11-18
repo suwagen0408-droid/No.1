@@ -86,6 +86,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user or related entity is deleted
+    if (user.deletedAt) {
+      return NextResponse.json(
+        { error: 'アカウントが削除されています。' },
+        { status: 403 }
+      );
+    }
+
+    if (user.manufacturer?.deletedAt) {
+      return NextResponse.json(
+        { error: 'アカウントが削除されています。' },
+        { status: 403 }
+      );
+    }
+
+    if (user.facility?.deletedAt) {
+      return NextResponse.json(
+        { error: 'アカウントが削除されています。' },
+        { status: 403 }
+      );
+    }
+
     // Reset failed login attempts and update last login
     await prisma.user.update({
       where: { id: user.id },

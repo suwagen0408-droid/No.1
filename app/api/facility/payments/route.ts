@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { stripe, toStripeAmount, mockPaymentMethod } from '@/lib/stripe';
 
 // GET /api/facility/payments - Get pending payments for facility
 export async function GET(request: NextRequest) {
@@ -117,16 +118,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mock payment processing (will be replaced with Stripe in Phase 2)
+    // ===== STRIPE PAYMENT PROCESSING =====
+    // This is using MOCK Stripe integration for demo purposes
+    // In production, replace with real Stripe SDK and payment flow
+    
     const now = new Date();
+    let stripePaymentIntentId: string | undefined;
+    let stripeChargeId: string | undefined;
 
-    // Update payment status
+    try {
+      // Create Stripe Payment Intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: toStripeAmount(payment.totalAmount, 'jpy'),
+        currency: 'jpy',
+        metadata: {
+          facilityPaymentId: payment.id,
+          facilityCampaignId: payment.facilityCampaignId,
+          facilityId: payment.facilityId,
+        },
+      });
+
+      stripePaymentIntentId = paymentIntent.id;
+
+      // Simulate payment method confirmation
+      // In production, this would be done via Stripe Elements on the frontend
+      const mockPM = mockPaymentMethod();
+      const confirmedIntent = await stripe.paymentIntents.confirm(paymentIntent.id, {
+        payment_method: mockPM,
+      });
+
+      // Mock charge ID (in real Stripe, this comes from the payment intent)
+      stripeChargeId = `ch_mock_${Date.now()}`;
+
+      console.log(`✅ Stripe payment processed: ${stripePaymentIntentId}`);
+    } catch (stripeError) {
+      console.error('Stripe payment error:', stripeError);
+      
+      // Mark payment as failed
+      await prisma.facilityPayment.update({
+        where: { id: paymentId },
+        data: {
+          paymentStatus: 'failed',
+          failedAt: now,
+          failedReason: '決済処理に失敗しました',
+        },
+      });
+
+      return NextResponse.json(
+        { error: '決済処理に失敗しました。もう一度お試しください。' },
+        { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      );
+    }
+
+    // Update payment status with Stripe information
     await prisma.$transaction([
       prisma.facilityPayment.update({
         where: { id: paymentId },
         data: {
           paymentStatus: 'completed',
-          paymentMethod: paymentMethod || 'mock',
+          paymentMethod: 'stripe',
+          stripePaymentIntentId,
+          stripeChargeId,
           paidAt: now,
         },
       }),

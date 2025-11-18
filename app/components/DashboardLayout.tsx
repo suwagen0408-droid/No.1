@@ -139,6 +139,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   在庫管理
                 </Link>
                 <Link
+                  href="/dashboard/facility/payments"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  支払い管理
+                </Link>
+                <Link
                   href="/dashboard/qrcodes"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >

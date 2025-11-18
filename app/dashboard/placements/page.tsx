@@ -383,12 +383,13 @@ export default function PlacementsPage() {
                   onChange={(e) => {
                     setFormData({ ...formData, facilityCampaignId: e.target.value, productId: '' });
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                  style={{ color: '#111827' }}
                   required
                 >
-                  <option value="" className="text-gray-500">選択してください</option>
+                  <option value="" style={{ color: '#6B7280' }}>選択してください</option>
                   {campaigns.filter(c => c.status === 'approved').map((campaign) => (
-                    <option key={campaign.id} value={campaign.id} className="text-gray-900">
+                    <option key={campaign.id} value={campaign.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
                       {campaign.name}
                     </option>
                   ))}
@@ -403,14 +404,15 @@ export default function PlacementsPage() {
                   <select
                     value={formData.productId}
                     onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                    style={{ color: '#111827' }}
                     required
                   >
-                    <option value="" className="text-gray-500">選択してください</option>
+                    <option value="" style={{ color: '#6B7280' }}>選択してください</option>
                     {campaigns
                       .find(c => c.id === formData.facilityCampaignId)
                       ?.products.map((product) => (
-                        <option key={product.id} value={product.id} className="text-gray-900">
+                        <option key={product.id} value={product.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
                           {product.name}
                         </option>
                       ))}
@@ -518,12 +520,13 @@ export default function PlacementsPage() {
                 <select
                   value={stockUpdate.changeType}
                   onChange={(e) => setStockUpdate({ ...stockUpdate, changeType: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                  style={{ color: '#111827' }}
                 >
-                  <option value="restock" className="text-gray-900">補充</option>
-                  <option value="consume" className="text-gray-900">消費</option>
-                  <option value="adjust" className="text-gray-900">調整</option>
-                  <option value="damage" className="text-gray-900">破損</option>
+                  <option value="restock" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>補充</option>
+                  <option value="consume" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>消費</option>
+                  <option value="adjust" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>調整</option>
+                  <option value="damage" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>破損</option>
                 </select>
               </div>
 

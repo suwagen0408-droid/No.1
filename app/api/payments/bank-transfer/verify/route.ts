@@ -100,13 +100,15 @@ export async function POST(request: NextRequest) {
       // Create audit log
       await prisma.auditLog.create({
         data: {
-          loggerId: userId,
+          userId: userId,
+          userEmail: user.email,
+          userRole: user.role,
           action: 'payment_verified',
-          entityType: 'Invoice',
-          entityId: invoiceId,
-          changes: JSON.stringify({
-            from: { paymentStatus: 'processing' },
-            to: { paymentStatus: 'completed' },
+          resourceType: 'Invoice',
+          resourceId: invoiceId,
+          oldValues: JSON.stringify({ paymentStatus: 'processing' }),
+          newValues: JSON.stringify({
+            paymentStatus: 'completed',
             verifiedBy: user.email,
             amount: invoice.total,
           }),
@@ -166,13 +168,15 @@ export async function POST(request: NextRequest) {
       // Create audit log
       await prisma.auditLog.create({
         data: {
-          loggerId: userId,
+          userId: userId,
+          userEmail: user.email,
+          userRole: user.role,
           action: 'payment_rejected',
-          entityType: 'Invoice',
-          entityId: invoiceId,
-          changes: JSON.stringify({
-            from: { paymentStatus: 'processing' },
-            to: { paymentStatus: 'failed' },
+          resourceType: 'Invoice',
+          resourceId: invoiceId,
+          oldValues: JSON.stringify({ paymentStatus: 'processing' }),
+          newValues: JSON.stringify({
+            paymentStatus: 'failed',
             rejectedBy: user.email,
             reason: rejectionReason,
           }),

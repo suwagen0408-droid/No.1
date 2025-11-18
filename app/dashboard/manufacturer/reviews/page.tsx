@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface Facility {
   id: string;
@@ -25,6 +26,7 @@ interface ReviewData {
 
 export default function ManufacturerReviewsPage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +37,15 @@ export default function ManufacturerReviewsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      router.push('/login');
+      return;
+    }
+    const userData = JSON.parse(userStr);
+    setUser(userData);
     loadData();
-  }, []);
+  }, [router]);
 
   const loadData = async () => {
     try {
@@ -136,16 +145,23 @@ export default function ManufacturerReviewsPage() {
     );
   };
 
+  if (!user) {
+    return <div className="p-8">Loading...</div>;
+  }
+
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="text-center">読み込み中...</div>
-      </div>
+      <DashboardLayout user={user}>
+        <div className="p-8">
+          <div className="text-center">読み込み中...</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-8">
+    <DashboardLayout user={user}>
+      <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">施設レビュー</h1>
         <p className="text-gray-600">取引のある施設を評価してください</p>
@@ -281,5 +297,6 @@ export default function ManufacturerReviewsPage() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

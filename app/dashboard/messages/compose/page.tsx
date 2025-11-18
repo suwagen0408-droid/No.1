@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface User {
   id: string;
@@ -14,6 +15,7 @@ interface User {
 export default function ComposeMessagePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedRecipientId, setSelectedRecipientId] = useState('');
   const [subject, setSubject] = useState('');
@@ -22,7 +24,19 @@ export default function ComposeMessagePage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
 
   useEffect(() => {
-    loadUsers();
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      router.push('/login');
+      return;
+    }
+    const userData = JSON.parse(userStr);
+    setCurrentUser(userData);
+  }, [router]);
+
+  useEffect(() => {
+    if (currentUser) {
+      loadUsers();
+    }
     
     // Check if replying to a message
     const replyId = searchParams.get('reply');
@@ -151,8 +165,13 @@ export default function ComposeMessagePage() {
     );
   };
 
+  if (!currentUser) {
+    return <div className="p-8">Loading...</div>;
+  }
+
   return (
-    <div className="p-8">
+    <DashboardLayout user={currentUser}>
+      <div className="p-8">
       <div className="mb-8">
         <button
           onClick={() => router.push('/dashboard/messages')}
@@ -245,5 +264,6 @@ export default function ComposeMessagePage() {
         </div>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

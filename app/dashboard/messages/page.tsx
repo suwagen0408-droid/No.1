@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface Message {
   id: string;
@@ -25,14 +26,27 @@ interface MessageData {
 
 export default function MessagesPage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<'received' | 'sent'>('received');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
   useEffect(() => {
-    loadMessages();
-  }, [tab]);
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      router.push('/login');
+      return;
+    }
+    const userData = JSON.parse(userStr);
+    setUser(userData);
+  }, [router]);
+
+  useEffect(() => {
+    if (user) {
+      loadMessages();
+    }
+  }, [tab, user]);
 
   const loadMessages = async () => {
     setLoading(true);
@@ -88,8 +102,13 @@ export default function MessagesPage() {
     }
   };
 
+  if (!user) {
+    return <div className="p-8">Loading...</div>;
+  }
+
   return (
-    <div className="p-8">
+    <DashboardLayout user={user}>
+      <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">メッセージ</h1>
@@ -261,5 +280,6 @@ export default function MessagesPage() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

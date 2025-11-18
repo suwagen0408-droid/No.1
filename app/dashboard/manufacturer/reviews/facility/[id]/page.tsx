@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface FacilityRatingData {
   facility: {
@@ -31,19 +32,30 @@ interface FacilityRatingData {
 
 export default function FacilityRatingPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [data, setData] = useState<FacilityRatingData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      router.push('/login');
+      return;
+    }
+    const userData = JSON.parse(userStr);
+    setUser(userData);
+  }, [router]);
 
   useEffect(() => {
     params.then((p) => setFacilityId(p.id));
   }, [params]);
 
   useEffect(() => {
-    if (facilityId) {
+    if (facilityId && user) {
       loadRating();
     }
-  }, [facilityId]);
+  }, [facilityId, user]);
 
   const loadRating = async () => {
     if (!facilityId) return;
@@ -107,24 +119,33 @@ export default function FacilityRatingPage({ params }: { params: Promise<{ id: s
     );
   };
 
+  if (!user) {
+    return <div className="p-8">Loading...</div>;
+  }
+
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="text-center">読み込み中...</div>
-      </div>
+      <DashboardLayout user={user}>
+        <div className="p-8">
+          <div className="text-center">読み込み中...</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (!data) {
     return (
-      <div className="p-8">
-        <div className="text-center text-gray-500">データが見つかりません</div>
-      </div>
+      <DashboardLayout user={user}>
+        <div className="p-8">
+          <div className="text-center text-gray-500">データが見つかりません</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-8">
+    <DashboardLayout user={user}>
+      <div className="p-8">
       {/* Back Button */}
       <button
         onClick={() => router.push('/dashboard/manufacturer/reviews')}
@@ -205,5 +226,6 @@ export default function FacilityRatingPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

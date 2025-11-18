@@ -86,10 +86,28 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   キャンペーン作成
                 </Link>
                 <Link
+                  href="/dashboard/manufacturer/inventory"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  📦 在庫管理
+                </Link>
+                <Link
                   href="/dashboard/manufacturer/invoices"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   請求書管理
+                </Link>
+                <Link
+                  href="/dashboard/manufacturer/reviews"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  ⭐ 施設レビュー
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  💬 メッセージ
                 </Link>
                 <Link
                   href="/dashboard/manufacturer/feedback"
@@ -121,10 +139,22 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   導入商品
                 </Link>
                 <Link
+                  href="/dashboard/facility/inventory"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  📦 在庫管理
+                </Link>
+                <Link
                   href="/dashboard/qrcodes"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   QRコード
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  💬 メッセージ
                 </Link>
               </>
             )}
@@ -148,6 +178,24 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   全体分析
+                </Link>
+                <Link
+                  href="/dashboard/admin/statistics"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  📊 統計ダッシュボード
+                </Link>
+                <Link
+                  href="/dashboard/admin/payments"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  💳 支払い管理
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  💬 メッセージ
                 </Link>
               </>
             )}

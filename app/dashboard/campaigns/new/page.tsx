@@ -26,9 +26,24 @@ const FACILITY_TYPES = [
 ];
 
 const COST_MODELS = [
-  { value: 'free', label: '無料提供' },
-  { value: 'cost_price', label: '原価提供' },
-  { value: 'discounted', label: '割引価格' },
+  { 
+    value: 'free', 
+    label: '無料配布', 
+    description: '施設への支払い不要。プラットフォーム手数料のみ',
+    requiresPrice: false 
+  },
+  { 
+    value: 'paid_sampling', 
+    label: '有料サンプリング', 
+    description: '承認時に即時支払い。小額・トライアル向け',
+    requiresPrice: true 
+  },
+  { 
+    value: 'invoice_later', 
+    label: '後払い請求', 
+    description: '月次まとめて請求。大規模施設・継続取引向け',
+    requiresPrice: true 
+  },
 ];
 
 const SHIPPING_OPTIONS = [
@@ -55,7 +70,10 @@ export default function NewCampaignPage() {
     targetFacilityTypes: [] as string[],
     targetFacilityTags: [] as string[],
     minMonthlyGuests: 0,
-    costModel: 'free' as 'free' | 'cost_price' | 'discounted',
+    costModel: 'free' as 'free' | 'paid_sampling' | 'invoice_later',
+    paymentTiming: 'none' as 'none' | 'on_approval' | 'monthly_invoice',
+    unitPrice: 0,
+    shippingFee: 0,
     shippingCostCoveredBy: 'manufacturer' as 'manufacturer' | 'facility' | 'split',
     productIds: [] as string[],
   });
@@ -142,6 +160,15 @@ export default function NewCampaignPage() {
         setError('最低1つの商品を選択してください');
         setSubmitting(false);
         return;
+      }
+
+      // Payment model validation
+      if (formData.costModel !== 'free') {
+        if (formData.unitPrice <= 0) {
+          setError('有料モデルの場合、1ユニットあたりの価格を設定してください');
+          setSubmitting(false);
+          return;
+        }
       }
 
       const response = await fetch('/api/manufacturer/campaigns', {
@@ -495,35 +522,132 @@ export default function NewCampaignPage() {
             </div>
           </div>
 
-          {/* Cost Model */}
+          {/* Cost Model & Pricing */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">コストモデル</h2>
-            <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">💰 支払いモデル</h2>
+            <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  商品提供モデル
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  商品提供モデル <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {COST_MODELS.map((model) => (
-                    <button
-                      key={model.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, costModel: model.value as any })}
-                      className={`px-4 py-3 text-sm font-medium rounded-lg border ${
-                        formData.costModel === model.value
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {model.label}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 gap-3">
+                  {COST_MODELS.map((model) => {
+                    const isSelected = formData.costModel === model.value;
+                    return (
+                      <button
+                        key={model.value}
+                        type="button"
+                        onClick={() => {
+                          const newPaymentTiming = 
+                            model.value === 'free' ? 'none' :
+                            model.value === 'paid_sampling' ? 'on_approval' :
+                            'monthly_invoice';
+                          setFormData({ 
+                            ...formData, 
+                            costModel: model.value as any,
+                            paymentTiming: newPaymentTiming,
+                            unitPrice: model.value === 'free' ? 0 : formData.unitPrice,
+                            shippingFee: model.value === 'free' ? 0 : formData.shippingFee,
+                          });
+                        }}
+                        className={`px-6 py-4 text-left rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? 'bg-blue-50 border-blue-500 shadow-md'
+                            : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                              }`}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className={`text-base font-semibold ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                                {model.label}
+                              </span>
+                            </div>
+                            <p className={`mt-2 text-sm ml-8 ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                              {model.description}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* Price Configuration - Only show for paid models */}
+              {formData.costModel !== 'free' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
+                  <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    価格設定
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        1ユニットあたりの価格（円） <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.unitPrice}
+                        onChange={(e) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="例：500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">施設が支払う金額（税別）</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        配送料（円）
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.shippingFee}
+                        onChange={(e) => setFormData({ ...formData, shippingFee: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="例：1000"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">配送にかかる費用</p>
+                    </div>
+                  </div>
+                  {formData.unitPrice > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-blue-200">
+                      <div className="text-sm text-gray-700 space-y-2">
+                        <div className="flex justify-between">
+                          <span>商品代金（10ユニット想定）:</span>
+                          <span className="font-medium">¥{(formData.unitPrice * 10).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>配送料:</span>
+                          <span className="font-medium">¥{formData.shippingFee.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-blue-200 font-semibold text-blue-900">
+                          <span>合計:</span>
+                          <span>¥{((formData.unitPrice * 10) + formData.shippingFee).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  配送費負担
+                  🚚 配送費負担
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {SHIPPING_OPTIONS.map((option) => (

@@ -48,6 +48,7 @@ model User {
   passwordResetTokens   PasswordResetToken[]
   stockLogsCreated      StockLog[]
   notificationsReceived Notification[]
+  notificationPreference NotificationPreference?
   approvedManufacturers Manufacturer[]       @relation("ApprovedBy")
   approvedFacilities    Facility[]           @relation("ApprovedBy")
   approvedProducts      Product[]            @relation("ApprovedBy")
@@ -815,6 +816,40 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  
+  // Email notification settings
+  emailEnabled             Boolean @default(true) @map("email_enabled")
+  emailOnCampaignApproval  Boolean @default(true) @map("email_on_campaign_approval")
+  emailOnApplicationStatus Boolean @default(true) @map("email_on_application_status")
+  emailOnMessage           Boolean @default(true) @map("email_on_message")
+  emailOnReview            Boolean @default(true) @map("email_on_review")
+  emailOnPayment           Boolean @default(true) @map("email_on_payment")
+  
+  // Push notification settings (for future web push)
+  pushEnabled             Boolean @default(false) @map("push_enabled")
+  pushOnCampaignApproval  Boolean @default(false) @map("push_on_campaign_approval")
+  pushOnApplicationStatus Boolean @default(false) @map("push_on_application_status")
+  pushOnMessage           Boolean @default(false) @map("push_on_message")
+  pushOnReview            Boolean @default(false) @map("push_on_review")
+  pushOnPayment           Boolean @default(false) @map("push_on_payment")
+  
+  // Digest settings
+  dailyDigestEnabled  Boolean   @default(false) @map("daily_digest_enabled")
+  dailyDigestTime     String?   @map("daily_digest_time") // HH:MM format
+  weeklyDigestEnabled Boolean   @default(false) @map("weekly_digest_enabled")
+  weeklyDigestDay     Int?      @map("weekly_digest_day") // 0=Sunday, 6=Saturday
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notification_preferences")
 }
 
 // ============================================

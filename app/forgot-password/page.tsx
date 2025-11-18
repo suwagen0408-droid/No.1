@@ -2,169 +2,208 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [resetUrl, setResetUrl] = useState(''); // For development mode
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
-    setMessage('');
-    setResetUrl('');
+    setLoading(true);
 
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(data.message);
-        
-        // In development mode, show the reset URL
+        setSuccess(true);
+        // Show reset link in development mode
         if (data.resetUrl) {
-          setResetUrl(data.resetUrl);
+          console.log('Development Reset URL:', data.resetUrl);
         }
-        
-        // Clear form
-        setEmail('');
       } else {
-        setError(data.error || 'エラーが発生しました');
+        // Even on error, show success message to prevent email enumeration
+        setSuccess(true);
       }
-    } catch (err) {
-      setError('ネットワークエラーが発生しました');
+    } catch (error) {
+      setError('ネットワークエラーが発生しました。もう一度お試しください。');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-blue-600 mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-8 w-8 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-blue-600 mb-2">ESSC Platform</h1>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">パスワードリセット</h1>
+
+          {/* Success Card */}
+          <div className="bg-white rounded-lg shadow-md p-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                メールを送信しました
+              </h2>
+              <p className="text-gray-600 mb-6">
+                パスワードリセットの手順を記載したメールを送信しました。
+                <br />
+                メールをご確認ください。
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong className="block mb-2">📧 次のステップ:</strong>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800">
+                  <li>メールボックスを確認してください</li>
+                  <li>「パスワードリセット」のメールを開く</li>
+                  <li>メール内のリンクをクリック</li>
+                  <li>新しいパスワードを設定</li>
+                </ol>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                メールが届かない場合は、迷惑メールフォルダもご確認ください。
+                <br />
+                リンクの有効期限は1時間です。
+              </p>
+              <Link
+                href="/login"
+                className="inline-block w-full py-3 px-4 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium transition-colors"
+              >
+                ログインページに戻る
+              </Link>
+            </div>
+          </div>
+
+          {/* Resend */}
+          <div className="text-center">
+            <button
+              onClick={() => {
+                setSuccess(false);
+                setEmail('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              別のメールアドレスで再送信
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-blue-600 mb-2">ESSC Platform</h1>
+          <h2 className="text-2xl font-bold text-gray-900">パスワードをお忘れですか？</h2>
           <p className="mt-2 text-sm text-gray-600">
-            登録されたメールアドレスを入力してください
+            登録されているメールアドレスを入力してください。
+            <br />
+            パスワードリセット用のリンクをお送りします。
           </p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow p-8">
-          {/* Success Message */}
-          {message && (
-            <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-green-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-green-800">{message}</p>
-                  
-                  {/* Development Mode Reset Link */}
-                  {resetUrl && (
-                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                      <p className="text-xs font-semibold text-yellow-800 mb-2">
-                        【開発モード】リセットリンク:
-                      </p>
-                      <Link
-                        href={resetUrl}
-                        className="text-xs text-blue-600 hover:text-blue-800 break-all"
-                      >
-                        {resetUrl}
-                      </Link>
-                    </div>
-                  )}
-                </div>
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <p className="text-sm">{error}</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-4">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 メールアドレス
               </label>
               <input
-                type="email"
                 id="email"
+                type="email"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="your-email@example.com"
-                disabled={loading}
+                placeholder="example@company.com"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 px-4 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'リセットメール送信中...' : 'リセットメールを送信'}
+              {loading ? 'メール送信中...' : 'リセットリンクを送信'}
             </button>
           </form>
 
-          {/* Back to Login */}
-          <div className="mt-6 text-center">
-            <Link
-              href="/login"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              ← ログインに戻る
+          <div className="mt-6 text-center space-y-2">
+            <Link href="/login" className="block text-sm text-blue-600 hover:text-blue-800">
+              ← ログインページに戻る
             </Link>
+            <p className="text-xs text-gray-500">
+              アカウントをお持ちでない方は
+              {' '}
+              <Link href="/signup" className="text-blue-600 hover:text-blue-800 underline">
+                新規登録
+              </Link>
+            </p>
           </div>
         </div>
 
-        {/* Info */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            メールが届かない場合は、迷惑メールフォルダをご確認ください。
-          </p>
+        {/* Security Info */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex">
+            <svg
+              className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium mb-1">セキュリティについて</p>
+              <p className="text-xs">
+                パスワードリセットのリンクは、セキュリティ保護のため1時間で無効になります。
+                万が一、このリクエストに心当たりがない場合は、このメールを無視してください。
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

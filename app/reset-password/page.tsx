@@ -1,41 +1,41 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [token, setToken] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const token = searchParams.get('token');
+
+  const [formData, setFormData] = useState({
+    password: '',
+    confirmPassword: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Redirect if no token
   useEffect(() => {
-    const tokenParam = searchParams.get('token');
-    if (tokenParam) {
-      setToken(tokenParam);
-    } else {
-      setError('リセットトークンが見つかりません');
+    if (!token) {
+      router.push('/login');
     }
-  }, [searchParams]);
+  }, [token, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('パスワードが一致しません');
+    // Validation
+    if (formData.password.length < 8) {
+      setError('パスワードは8文字以上である必要があります');
       return;
     }
 
-    // Validate password length
-    if (password.length < 8) {
-      setError('パスワードは8文字以上である必要があります');
+    if (formData.password !== formData.confirmPassword) {
+      setError('パスワードが一致しません');
       return;
     }
 
@@ -44,60 +44,67 @@ function ResetPasswordForm() {
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          password: formData.password,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
         setSuccess(true);
-        
-        // Redirect to login after 3 seconds
+        // Redirect to login after 2 seconds
         setTimeout(() => {
           router.push('/login');
-        }, 3000);
+        }, 2000);
       } else {
-        setError(data.error || 'エラーが発生しました');
+        setError(data.error || 'パスワードのリセットに失敗しました');
       }
-    } catch (err) {
+    } catch (error) {
       setError('ネットワークエラーが発生しました');
     } finally {
       setLoading(false);
     }
   };
 
+  if (!token) {
+    return <div className="min-h-screen flex items-center justify-center">読み込み中...</div>;
+  }
+
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
-                className="h-8 w-8 text-green-600"
-                fill="currentColor"
-                viewBox="0 0 20 20"
+                className="w-8 h-8 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
                 />
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              パスワードがリセットされました
+              パスワードリセット完了
             </h2>
-            <p className="text-gray-600 mb-4">
-              新しいパスワードでログインできます。<br />
-              3秒後にログインページに移動します...
+            <p className="text-gray-600 mb-6">
+              パスワードが正常にリセットされました。<br />
+              新しいパスワードでログインしてください。
             </p>
-            <Link
-              href="/login"
-              className="inline-block text-blue-600 hover:text-blue-700 font-medium"
-            >
-              今すぐログイン →
-            </Link>
+            <p className="text-sm text-gray-500">
+              自動的にログインページに移動します...
+            </p>
           </div>
         </div>
       </div>
@@ -105,109 +112,101 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-blue-600 mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-8 w-8 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">新しいパスワードを設定</h1>
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-blue-600 mb-2">ESSC Platform</h1>
+          <h2 className="text-2xl font-bold text-gray-900">パスワードリセット</h2>
           <p className="mt-2 text-sm text-gray-600">
-            8文字以上のパスワードを入力してください
+            新しいパスワードを設定してください
           </p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow p-8">
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-4">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 新しいパスワード
               </label>
               <input
-                type="password"
                 id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="password"
                 required
-                minLength={8}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="8文字以上"
-                disabled={loading || !token}
+                minLength={8}
               />
+              <p className="mt-1 text-xs text-gray-500">
+                8文字以上で設定してください
+              </p>
             </div>
 
-            <div className="mb-6">
+            <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                パスワード確認
+                パスワード（確認）
               </label>
               <input
-                type="password"
                 id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                type="password"
                 required
-                minLength={8}
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="パスワードを再入力"
-                disabled={loading || !token}
+                placeholder="もう一度入力してください"
+                minLength={8}
               />
             </div>
-
-            {/* Password Strength Indicator */}
-            {password && (
-              <div className="mb-4">
-                <div className="flex items-center space-x-2 text-xs">
-                  <span className="text-gray-600">パスワード強度:</span>
-                  <div className={`px-2 py-1 rounded ${
-                    password.length >= 12 ? 'bg-green-100 text-green-800' :
-                    password.length >= 8 ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {password.length >= 12 ? '強い' : password.length >= 8 ? '普通' : '弱い'}
-                  </div>
-                </div>
-              </div>
-            )}
 
             <button
               type="submit"
-              disabled={loading || !token}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              disabled={loading}
+              className="w-full py-3 px-4 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'リセット中...' : 'パスワードをリセット'}
             </button>
           </form>
 
-          {/* Back to Login */}
           <div className="mt-6 text-center">
-            <Link
-              href="/login"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              ← ログインに戻る
+            <Link href="/login" className="text-sm text-blue-600 hover:text-blue-800">
+              ログインページに戻る
             </Link>
+          </div>
+        </div>
+
+        {/* Security Info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex">
+            <svg
+              className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">セキュリティのヒント</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>推測されやすいパスワードは避けてください</li>
+                <li>他のサービスと同じパスワードを使用しないでください</li>
+                <li>定期的にパスワードを変更することをお勧めします</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

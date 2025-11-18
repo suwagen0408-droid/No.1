@@ -106,6 +106,49 @@ export default function FacilityInvoicesPage() {
     return new Date(dateString).toLocaleDateString('ja-JP');
   };
 
+  const handleDownloadPDF = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const response = await fetch(`/api/facility/invoices/${invoiceId}/pdf`, {
+        headers: {
+          'x-user-id': user.id,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('PDF生成に失敗しました');
+      }
+
+      // Get the HTML content
+      const htmlContent = await response.text();
+
+      // Create a blob and open in new window for printing
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      // Open in new window
+      const printWindow = window.open(url, '_blank');
+      
+      if (printWindow) {
+        // Clean up the URL after window opens
+        printWindow.addEventListener('load', () => {
+          URL.revokeObjectURL(url);
+        });
+      } else {
+        // Fallback: download as HTML file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${invoiceNumber}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+      alert('PDFのダウンロードに失敗しました');
+    }
+  };
+
   if (!user) {
     return <div className="p-8">Loading...</div>;
   }
@@ -293,7 +336,7 @@ export default function FacilityInvoicesPage() {
                 {/* Actions */}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => alert('PDF機能は近日実装予定です')}
+                    onClick={() => handleDownloadPDF(selectedInvoice.id, selectedInvoice.invoiceNumber)}
                     className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
                   >
                     📄 PDFダウンロード

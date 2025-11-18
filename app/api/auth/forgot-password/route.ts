@@ -64,8 +64,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // In production, send email here
-    // For now, we'll log the reset link (in development mode only)
+    // Generate reset URL
     const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
     
     if (process.env.NODE_ENV === 'development') {
@@ -76,8 +75,21 @@ export async function POST(request: NextRequest) {
       console.log('======================================\n');
     }
 
-    // TODO: Implement email sending
-    // await sendPasswordResetEmail(user.email, resetUrl);
+    // Send password reset email (async, don't wait)
+    fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/notifications/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        type: 'password_reset',
+        subject: 'パスワードリセットのご依頼',
+        templateData: {
+          resetLink: resetUrl,
+        },
+      }),
+    }).catch((error) => {
+      console.error('Failed to send password reset email:', error);
+    });
 
     return NextResponse.json(
       { 

@@ -178,10 +178,21 @@ async function generateMonthlyInvoices(year: number, month: number) {
         }
       }
 
+      // Get facility user ID
+      const facility = await prisma.facility.findUnique({
+        where: { id: facilityId },
+        select: { userId: true },
+      });
+
+      if (!facility) {
+        console.log(`   ⚠️  Warning: Facility ${facilityId} not found, skipping notification`);
+        continue;
+      }
+
       // Create notification for facility
       await prisma.notification.create({
         data: {
-          userId: items[0].facilityId, // Using facility ID which should map to user
+          userId: facility.userId,
           type: 'invoice_issued',
           title: '請求書が発行されました',
           message: `${year}年${month}月分の請求書（${invoiceNumber}）が発行されました。金額: ¥${totalAmount.toLocaleString()}`,
@@ -190,18 +201,39 @@ async function generateMonthlyInvoices(year: number, month: number) {
         },
       });
 
+      // Send email notification (using fetch to call internal API)
+      try {
+        const emailResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/notifications/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: facility.userId,
+            type: 'invoice_issued',
+            subject: '請求書発行のお知らせ',
+            templateData: {
+              invoiceNumber,
+              total: totalAmount,
+              dueDate: new Date(year, month, 20).toISOString(),
+              invoiceUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/facility/invoices`,
+            },
+          }),
+        });
+
+        if (emailResponse.ok) {
+          console.log(`   📧 Email notification sent`);
+        } else {
+          console.log(`   ⚠️  Email notification failed (will retry from digest)`);
+        }
+      } catch (emailError) {
+        console.log(`   ⚠️  Email notification error:`, emailError);
+      }
+
       invoiceCount++;
       console.log(`   ✅ Invoice created successfully`);
     }
 
     console.log(`\n✅ Generated ${invoiceCount} invoices successfully!`);
-    console.log(`📧 Email notifications would be sent here (not implemented in this version)\n`);
-
-    // TODO: Generate PDF invoices
-    console.log(`📄 PDF generation would happen here (future feature)`);
-    
-    // TODO: Send email notifications
-    console.log(`📧 Email sending would happen here (future feature)`);
+    console.log(`📧 Email notifications sent to facilities\n`);
 
   } catch (error) {
     console.error('❌ Error generating invoices:', error);

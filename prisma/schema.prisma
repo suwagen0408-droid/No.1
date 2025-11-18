@@ -154,6 +154,8 @@ model Facility {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   approver          User?              @relation("ApprovedBy", fields: [approvedBy], references: [id])
   facilityCampaigns FacilityCampaign[]
+  facilityPayments  FacilityPayment[]
+  facilityInvoices  FacilityInvoice[]
   qrCodes           QrCode[]
   qrScanEvents      QrScanEvent[]
   clickEvents       ClickEvent[]
@@ -266,9 +268,17 @@ model ProductImage {
 // ============================================
 
 enum CostModel {
-  free
-  cost_price
-  discounted
+  free              // 無料配布
+  paid_sampling     // 有料サンプリング（即時支払い）
+  invoice_later     // 後払い請求（月次まとめ）
+  cost_price        // 原価販売（後方互換性）
+  discounted        // 割引価格（後方互換性）
+}
+
+enum PaymentTiming {
+  none              // 支払い不要（free）
+  on_approval       // 承認時に即時支払い（paid_sampling）
+  monthly_invoice   // 月次請求（invoice_later）
 }
 
 enum ShippingCostCoveredBy {
@@ -305,6 +315,9 @@ model Campaign {
   minMonthlyGuests    Int? @map("min_monthly_guests")
   
   costModel            CostModel             @default(free) @map("cost_model")
+  paymentTiming        PaymentTiming         @default(none) @map("payment_timing")
+  unitPrice            Float?                @map("unit_price")          // 1ユニットあたりの価格
+  shippingFee          Float?                @map("shipping_fee")        // 配送料
   shippingCostCoveredBy ShippingCostCoveredBy @default(manufacturer) @map("shipping_cost_covered_by")
   
   status          CampaignStatus @default(draft)
@@ -316,15 +329,16 @@ model Campaign {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
   
-  manufacturer         Manufacturer         @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
-  approver             User?                @relation("ApprovedBy", fields: [approvedBy], references: [id])
-  campaignProducts     CampaignProduct[]
-  facilityCampaigns    FacilityCampaign[]
-  qrCodes              QrCode[]
-  qrScanEvents         QrScanEvent[]
-  clickEvents          ClickEvent[]
-  purchaseEvents       PurchaseEvent[]
-  invoiceItems         InvoiceItem[]
+  manufacturer          Manufacturer          @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  approver              User?                 @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  campaignProducts      CampaignProduct[]
+  facilityCampaigns     FacilityCampaign[]
+  facilityInvoiceItems  FacilityInvoiceItem[]
+  qrCodes               QrCode[]
+  qrScanEvents          QrScanEvent[]
+  clickEvents           ClickEvent[]
+  purchaseEvents        PurchaseEvent[]
+  invoiceItems          InvoiceItem[]
   
   @@map("campaigns")
 }
@@ -350,6 +364,7 @@ model CampaignProduct {
 
 enum FacilityCampaignStatus {
   pending
+  pending_payment  // 支払い待ち（有料サンプリング）
   approved
   rejected
   active
@@ -383,6 +398,8 @@ model FacilityCampaign {
   campaign                  Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   approver                  User?                      @relation("ApprovedBy", fields: [approvedBy], references: [id])
   facilityProductPlacements FacilityProductPlacement[]
+  facilityPayments          FacilityPayment[]
+  facilityInvoiceItems      FacilityInvoiceItem[]
   
   @@unique([facilityId, campaignId])
   @@map("facility_campaigns")
@@ -675,6 +692,107 @@ model Payment {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   
   @@map("payments")
+}
+
+// ============================================
+// 施設側の支払い管理
+// ============================================
+
+model FacilityPayment {
+  id                 String   @id @default(uuid())
+  facilityId         String   @map("facility_id")
+  facilityCampaignId String   @map("facility_campaign_id")
+  
+  amount            Float
+  shippingFee       Float    @default(0) @map("shipping_fee")
+  totalAmount       Float    @map("total_amount")
+  currency          String   @default("JPY")
+  
+  paymentMethod     String   @map("payment_method") // stripe, bank_transfer
+  paymentStatus     String   @default("pending") @map("payment_status") // pending, processing, completed, failed, refunded
+  
+  // Stripe specific
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeChargeId        String? @map("stripe_charge_id")
+  
+  // Bank Transfer specific
+  transferProofUrl String?   @map("transfer_proof_url")
+  transferDate     DateTime? @map("transfer_date")
+  
+  paidAt      DateTime? @map("paid_at")
+  failedAt    DateTime? @map("failed_at")
+  failedReason String?  @map("failed_reason")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  facility         Facility         @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityCampaign FacilityCampaign @relation(fields: [facilityCampaignId], references: [id], onDelete: Cascade)
+  
+  @@map("facility_payments")
+}
+
+model FacilityInvoice {
+  id         String @id @default(uuid())
+  facilityId String @map("facility_id")
+  
+  invoiceNumber      String   @unique @map("invoice_number")
+  billingPeriodStart DateTime @map("billing_period_start")
+  billingPeriodEnd   DateTime @map("billing_period_end")
+  
+  subtotal Float
+  tax      Float @default(0)
+  total    Float
+  currency String  @default("JPY")
+  
+  status   String    @default("draft") // draft, issued, paid, overdue, cancelled
+  issuedAt DateTime? @map("issued_at")
+  dueDate  DateTime? @map("due_date")
+  paidAt   DateTime? @map("paid_at")
+  
+  // Payment Information
+  paymentMethod String? @map("payment_method")
+  paymentStatus String  @default("pending") @map("payment_status")
+  
+  // Stripe specific
+  stripeInvoiceId String? @unique @map("stripe_invoice_id")
+  
+  // Bank Transfer
+  transferProofUrl String?   @map("transfer_proof_url")
+  transferDate     DateTime? @map("transfer_date")
+  
+  notes String?
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  facility              Facility               @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityInvoiceItems  FacilityInvoiceItem[]
+  
+  @@map("facility_invoices")
+}
+
+model FacilityInvoiceItem {
+  id        String @id @default(uuid())
+  invoiceId String @map("invoice_id")
+  
+  itemType    String @map("item_type")
+  description String
+  
+  facilityCampaignId String? @map("facility_campaign_id")
+  campaignId         String? @map("campaign_id")
+  
+  quantity  Int   @default(1)
+  unitPrice Float @map("unit_price")
+  amount    Float
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  invoice          FacilityInvoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  facilityCampaign FacilityCampaign? @relation(fields: [facilityCampaignId], references: [id], onDelete: SetNull)
+  campaign         Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  
+  @@map("facility_invoice_items")
 }
 
 model Notification {

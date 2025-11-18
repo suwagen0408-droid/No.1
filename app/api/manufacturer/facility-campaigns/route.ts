@@ -146,10 +146,46 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Determine status based on payment model
+      let newStatus: 'approved' | 'pending_payment' = 'approved';
+      const campaign = facilityCampaign.campaign;
+      
+      // Phase 1: Handle payment models
+      if (campaign.costModel === 'free' || campaign.paymentTiming === 'none') {
+        // Free campaign - no payment required
+        newStatus = 'approved';
+      } else if (campaign.paymentTiming === 'on_approval') {
+        // Paid sampling - requires immediate payment
+        newStatus = 'pending_payment';
+        
+        // Create payment record for facility
+        if (campaign.unitPrice) {
+          const amount = campaign.unitPrice * approvedUnits;
+          const shippingFee = campaign.shippingCostCoveredBy === 'facility' ? (campaign.shippingFee || 0) : 0;
+          const totalAmount = amount + shippingFee;
+          
+          await prisma.facilityPayment.create({
+            data: {
+              facilityId: facilityCampaign.facilityId,
+              facilityCampaignId: facilityCampaign.id,
+              amount,
+              shippingFee,
+              totalAmount,
+              paymentMethod: 'stripe', // Default, can be changed by facility
+              paymentStatus: 'pending',
+            },
+          });
+        }
+      } else if (campaign.paymentTiming === 'monthly_invoice') {
+        // Monthly invoice - approve now, bill later
+        newStatus = 'approved';
+        // Note: Invoice will be generated at end of month by batch process
+      }
+
       await prisma.facilityCampaign.update({
         where: { id: validatedData.facilityCampaignId },
         data: {
-          status: 'approved',
+          status: newStatus,
           approvedUnits,
           approvedAt: new Date(),
           approvedBy: userId,

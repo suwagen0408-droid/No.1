@@ -112,6 +112,8 @@ export default function PlacementsPage() {
       });
       if (campaignsRes.ok) {
         const statsData = await campaignsRes.json();
+        console.log('📊 Stats Data:', statsData);
+        console.log('🎯 Active Campaigns:', statsData.activeCampaigns);
         setCampaigns(statsData.activeCampaigns || []);
       }
     } catch (error) {
@@ -388,11 +390,16 @@ export default function PlacementsPage() {
                   required
                 >
                   <option value="" style={{ color: '#6B7280' }}>選択してください</option>
-                  {campaigns.filter(c => c.status === 'approved').map((campaign) => (
-                    <option key={campaign.id} value={campaign.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
-                      {campaign.name}
-                    </option>
-                  ))}
+                  {(() => {
+                    const approvedCampaigns = campaigns.filter(c => c.status === 'approved');
+                    console.log('🔍 All campaigns:', campaigns);
+                    console.log('✅ Approved campaigns:', approvedCampaigns);
+                    return approvedCampaigns.map((campaign) => (
+                      <option key={campaign.id} value={campaign.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
+                        {campaign.name}
+                      </option>
+                    ));
+                  })()}
                 </select>
               </div>
 

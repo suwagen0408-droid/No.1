@@ -103,6 +103,7 @@ model Manufacturer {
   products     Product[]
   campaigns    Campaign[]
   invoices     Invoice[]
+  contracts    Contract[]
   
   @@map("manufacturers")
 }
@@ -156,6 +157,7 @@ model Facility {
   facilityCampaigns FacilityCampaign[]
   facilityPayments  FacilityPayment[]
   facilityInvoices  FacilityInvoice[]
+  contracts         Contract[]
   qrCodes           QrCode[]
   qrScanEvents      QrScanEvent[]
   clickEvents       ClickEvent[]
@@ -813,6 +815,69 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("notifications")
+}
+
+// ============================================
+// 契約管理
+// ============================================
+
+enum ContractStatus {
+  draft
+  active
+  expired
+  terminated
+  renewed
+}
+
+model Contract {
+  id             String   @id @default(uuid())
+  manufacturerId String   @map("manufacturer_id")
+  facilityId     String   @map("facility_id")
+  
+  contractNumber String   @unique @map("contract_number")
+  title          String
+  description    String?
+  
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  
+  renewalDate    DateTime? @map("renewal_date")
+  autoRenew      Boolean   @default(false) @map("auto_renew")
+  renewalPeriod  Int?      @map("renewal_period") // months
+  
+  status ContractStatus @default(draft)
+  
+  // Contract terms
+  terms          String? // JSON string for detailed terms
+  paymentTerms   String? @map("payment_terms")
+  deliveryTerms  String? @map("delivery_terms")
+  
+  // Documents
+  documentUrl String? @map("document_url") // PDF URL
+  
+  // Financial
+  monthlyFee  Float?  @map("monthly_fee")
+  setupFee    Float?  @map("setup_fee")
+  currency    String  @default("JPY")
+  
+  // Signing
+  signedAt          DateTime? @map("signed_at")
+  manufacturerSignedAt DateTime? @map("manufacturer_signed_at")
+  facilitySignedAt     DateTime? @map("facility_signed_at")
+  
+  // Termination
+  terminatedAt     DateTime? @map("terminated_at")
+  terminatedBy     String?   @map("terminated_by")
+  terminationReason String?  @map("termination_reason")
+  
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  
+  @@map("contracts")
 }
 
 model AuditLog {

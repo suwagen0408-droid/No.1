@@ -11,6 +11,10 @@ export async function POST(
     const { id } = await params;
     const userId = request.headers.get('x-user-id');
     
+    // Get request body for reason
+    const body = await request.json().catch(() => ({}));
+    const { reason } = body;
+    
     if (!userId) {
       return NextResponse.json(
         { error: '認証が必要です' },
@@ -76,6 +80,12 @@ export async function POST(
       );
     }
 
+    // Check if this is early start
+    const now = new Date();
+    const startDate = new Date(campaign.startDate);
+    const isEarlyStart = now < startDate;
+    const daysEarly = isEarlyStart ? Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
     // Activate campaign
     const updatedCampaign = await prisma.campaign.update({
       where: { id },
@@ -84,24 +94,71 @@ export async function POST(
       },
     });
 
-    // Create audit log
+    // Get participating facilities for notifications
+    const facilityCampaigns = await prisma.facilityCampaign.findMany({
+      where: { 
+        campaignId: id,
+        status: { in: ['approved', 'active'] }
+      },
+      include: { 
+        facility: { 
+          include: { user: true } 
+        } 
+      }
+    });
+
+    // Notify all participating facilities
+    const notificationPromises = facilityCampaigns.map(async (fc) => {
+      const notificationMessage = isEarlyStart
+        ? `「${campaign.name}」が予定より${daysEarly}日早く開始されました。商品の配置準備をお願いします。`
+        : `「${campaign.name}」が開始されました。商品の配置準備をお願いします。`;
+
+      return prisma.notification.create({
+        data: {
+          userId: fc.facility.userId,
+          type: 'campaign_started',
+          title: isEarlyStart ? 'キャンペーンが早期開始されました' : 'キャンペーンが開始されました',
+          message: notificationMessage,
+          relatedResourceType: 'Campaign',
+          relatedResourceId: id,
+        }
+      });
+    });
+
+    await Promise.all(notificationPromises);
+
+    // Create audit log with detailed information
     await prisma.auditLog.create({
       data: {
         loggerId: userId,
-        action: 'campaign_activated',
+        action: isEarlyStart ? 'campaign_early_started' : 'campaign_activated',
         entityType: 'Campaign',
         entityId: id,
         changes: JSON.stringify({
           from: { status: campaign.status },
           to: { status: CampaignStatus.active },
+          isEarlyStart,
+          daysEarly: isEarlyStart ? daysEarly : 0,
+          scheduledStartDate: campaign.startDate,
+          actualStartDate: now,
+          reason: reason || '理由未記入',
+          facilitiesNotified: facilityCampaigns.length,
         }),
       },
     });
 
+    console.log(`✅ Campaign ${campaign.name} activated${isEarlyStart ? ' (Early Start)' : ''}`);
+    console.log(`📢 Notified ${facilityCampaigns.length} facilities`);
+
     return NextResponse.json(
       { 
-        message: 'キャンペーンを開始しました',
+        message: isEarlyStart 
+          ? `キャンペーンを${daysEarly}日早く開始しました。${facilityCampaigns.length}施設に通知を送信しました。`
+          : `キャンペーンを開始しました。${facilityCampaigns.length}施設に通知を送信しました。`,
         campaign: updatedCampaign,
+        facilitiesNotified: facilityCampaigns.length,
+        isEarlyStart,
+        daysEarly,
       },
       {
         headers: { 'Content-Type': 'application/json; charset=utf-8' }

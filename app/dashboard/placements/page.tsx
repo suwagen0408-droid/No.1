@@ -373,9 +373,9 @@ export default function PlacementsPage() {
               <h2 className="text-xl font-bold text-gray-900">新規配置を追加</h2>
             </div>
 
-            <form onSubmit={handleCreatePlacement} className="p-6 space-y-4">
+            <form onSubmit={handleCreatePlacement} className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   キャンペーン選択 <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -397,7 +397,7 @@ export default function PlacementsPage() {
 
               {formData.facilityCampaignId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                  <label className="block text-base font-semibold text-gray-900 mb-3">
                     商品選択 <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -419,7 +419,7 @@ export default function PlacementsPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   配置場所 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -434,7 +434,7 @@ export default function PlacementsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                  <label className="block text-base font-semibold text-gray-900 mb-3">
                     初期数量 <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -448,7 +448,7 @@ export default function PlacementsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                  <label className="block text-base font-semibold text-gray-900 mb-3">
                     再発注しきい値
                   </label>
                   <input
@@ -462,7 +462,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   メモ
                 </label>
                 <textarea
@@ -512,7 +512,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   更新タイプ
                 </label>
                 <select
@@ -528,7 +528,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   変更量 {stockUpdate.changeType === 'restock' ? '(+)' : '(-)'}
                 </label>
                 <input
@@ -551,7 +551,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   メモ
                 </label>
                 <textarea

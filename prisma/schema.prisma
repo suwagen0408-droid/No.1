@@ -592,6 +592,22 @@ model Invoice {
   dueDate  DateTime?     @map("due_date")
   paidAt   DateTime?     @map("paid_at")
   
+  // Payment Information
+  paymentMethod String? @map("payment_method") // stripe, bank_transfer, null
+  paymentStatus String  @default("pending") @map("payment_status") // pending, processing, completed, failed, cancelled
+  
+  // Stripe Integration
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeCheckoutSessionId String? @unique @map("stripe_checkout_session_id")
+  stripeCustomerId String? @map("stripe_customer_id")
+  
+  // Bank Transfer Information
+  bankTransferProof String? @map("bank_transfer_proof") // File URL for payment proof
+  bankTransferDate  DateTime? @map("bank_transfer_date")
+  bankTransferNote  String? @map("bank_transfer_note")
+  verifiedBy String? @map("verified_by") // Admin user ID who verified payment
+  verifiedAt DateTime? @map("verified_at")
+  
   pdfUrl String? @map("pdf_url")
   
   createdAt DateTime @default(now()) @map("created_at")
@@ -599,6 +615,7 @@ model Invoice {
   
   manufacturer Manufacturer  @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
   invoiceItems InvoiceItem[]
+  payments Payment[]
   
   @@map("invoices")
 }
@@ -624,6 +641,40 @@ model InvoiceItem {
   facility Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
   
   @@map("invoice_items")
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  invoiceId String   @map("invoice_id")
+  
+  amount   Float
+  currency String @default("JPY")
+  
+  paymentMethod String @map("payment_method") // stripe, bank_transfer
+  paymentStatus String @map("payment_status") // pending, processing, completed, failed, refunded
+  
+  // Stripe specific
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeChargeId        String? @map("stripe_charge_id")
+  stripeRefundId        String? @map("stripe_refund_id")
+  
+  // Bank Transfer specific
+  transferProofUrl String? @map("transfer_proof_url")
+  transferDate     DateTime? @map("transfer_date")
+  transferNote     String? @map("transfer_note")
+  
+  // Metadata
+  metadata String? // JSON string for additional data
+  
+  processedAt DateTime? @map("processed_at")
+  failedReason String? @map("failed_reason")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
 }
 
 model Notification {

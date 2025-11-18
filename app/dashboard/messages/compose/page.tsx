@@ -52,9 +52,11 @@ export default function ComposeMessagePage() {
   }, [searchParams]);
 
   const loadUsers = async () => {
+    if (!currentUser) return;
+    
     try {
-      const currentUserId = localStorage.getItem('userId');
-      const currentUserRole = localStorage.getItem('userRole');
+      const currentUserId = currentUser.id;
+      const currentUserRole = currentUser.role;
 
       // Load potential recipients based on user role
       let endpoint = '/api/admin/users'; // Default
@@ -69,7 +71,7 @@ export default function ComposeMessagePage() {
 
       const response = await fetch(endpoint, {
         headers: {
-          'x-user-id': currentUserId || '',
+          'x-user-id': currentUserId,
         },
       });
 
@@ -107,7 +109,7 @@ export default function ComposeMessagePage() {
   };
 
   const handleSend = async () => {
-    if (!selectedRecipientId || !subject.trim() || !message.trim()) {
+    if (!currentUser || !selectedRecipientId || !subject.trim() || !message.trim()) {
       alert('すべての項目を入力してください');
       return;
     }
@@ -118,7 +120,7 @@ export default function ComposeMessagePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('userId') || '',
+          'x-user-id': currentUser.id,
         },
         body: JSON.stringify({
           recipientId: selectedRecipientId,

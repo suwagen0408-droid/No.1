@@ -49,11 +49,13 @@ export default function MessagesPage() {
   }, [tab, user]);
 
   const loadMessages = async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
       const response = await fetch(`/api/messages?type=${tab}`, {
         headers: {
-          'x-user-id': localStorage.getItem('userId') || '',
+          'x-user-id': user.id,
         },
       });
 
@@ -61,7 +63,7 @@ export default function MessagesPage() {
         const data = await response.json();
         setMessages(data.messages || []);
       } else {
-        console.error('Failed to load messages');
+        console.error('Failed to load messages, status:', response.status);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);

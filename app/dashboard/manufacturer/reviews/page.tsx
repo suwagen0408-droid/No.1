@@ -44,15 +44,22 @@ export default function ManufacturerReviewsPage() {
     }
     const userData = JSON.parse(userStr);
     setUser(userData);
-    loadData();
   }, [router]);
 
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
+
   const loadData = async () => {
+    if (!user) return;
+    
     try {
       // Load facilities that manufacturer has worked with
       const facilitiesRes = await fetch('/api/manufacturer/facility-collaborations', {
         headers: {
-          'x-user-id': localStorage.getItem('userId') || '',
+          'x-user-id': user.id,
         },
       });
       
@@ -64,7 +71,7 @@ export default function ManufacturerReviewsPage() {
       // Load existing reviews
       const reviewsRes = await fetch('/api/manufacturer/facility-reviews', {
         headers: {
-          'x-user-id': localStorage.getItem('userId') || '',
+          'x-user-id': user.id,
         },
       });
       
@@ -80,7 +87,7 @@ export default function ManufacturerReviewsPage() {
   };
 
   const handleSubmitReview = async () => {
-    if (!selectedFacility) return;
+    if (!selectedFacility || !user) return;
 
     setSubmitting(true);
     try {
@@ -88,7 +95,7 @@ export default function ManufacturerReviewsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('userId') || '',
+          'x-user-id': user.id,
         },
         body: JSON.stringify({
           facilityId: selectedFacility.id,

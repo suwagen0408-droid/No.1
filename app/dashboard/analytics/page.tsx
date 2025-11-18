@@ -136,14 +136,132 @@ export default function AnalyticsPage() {
     );
   }
 
+  const handleExportPDF = async () => {
+    try {
+      const response = await fetch('/api/reports/analytics/pdf', {
+        headers: { 'x-user-id': user.id },
+      });
+      
+      if (response.ok) {
+        const html = await response.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      } else {
+        alert('PDFエクスポートに失敗しました');
+      }
+    } catch (error) {
+      console.error('Export PDF error:', error);
+      alert('PDFエクスポートに失敗しました');
+    }
+  };
+
+  const handleExportCSV = async (type: string) => {
+    try {
+      const response = await fetch(`/api/reports/analytics/csv?type=${type}`, {
+        headers: { 'x-user-id': user.id },
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${type}-export.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        alert('CSVエクスポートに失敗しました');
+      }
+    } catch (error) {
+      console.error('Export CSV error:', error);
+      alert('CSVエクスポートに失敗しました');
+    }
+  };
+
   return (
     <DashboardLayout user={user}>
       <div className="bg-white rounded-lg shadow">
         <div className="border-b px-6 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">全体分析</h1>
-          <p className="mt-2 text-gray-600">
-            プラットフォーム全体のKPI・統計データを表示します
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">全体分析</h1>
+              <p className="mt-2 text-gray-600">
+                プラットフォーム全体のKPI・統計データを表示します
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <div className="relative group">
+                <button
+                  onClick={handleExportPDF}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  PDFエクスポート
+                </button>
+              </div>
+              <div className="relative group">
+                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  CSVエクスポート
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 hidden group-hover:block z-10">
+                  <button
+                    onClick={() => handleExportCSV('overview')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                  >
+                    📊 概要データ
+                  </button>
+                  <button
+                    onClick={() => handleExportCSV('users')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    👥 ユーザー一覧
+                  </button>
+                  <button
+                    onClick={() => handleExportCSV('campaigns')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    🎯 キャンペーン一覧
+                  </button>
+                  <button
+                    onClick={() => handleExportCSV('products')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    📦 商品一覧
+                  </button>
+                  <button
+                    onClick={() => handleExportCSV('facilities')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    🏢 施設一覧
+                  </button>
+                  <button
+                    onClick={() => handleExportCSV('scans')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    📱 スキャンログ
+                  </button>
+                  <button
+                    onClick={() => handleExportCSV('purchases')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-b-lg"
+                  >
+                    💰 購入ログ
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="px-6 py-8 space-y-8">

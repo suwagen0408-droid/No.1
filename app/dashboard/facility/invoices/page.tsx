@@ -106,6 +106,10 @@ export default function FacilityInvoicesPage() {
     return new Date(dateString).toLocaleDateString('ja-JP');
   };
 
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'bank_transfer' | null>(null);
+  const [paymentProof, setPaymentProof] = useState<string>('');
+  const [processingPayment, setProcessingPayment] = useState(false);
+
   const handleDownloadPDF = async (invoiceId: string, invoiceNumber: string) => {
     try {
       const response = await fetch(`/api/facility/invoices/${invoiceId}/pdf`, {
@@ -146,6 +150,51 @@ export default function FacilityInvoicesPage() {
     } catch (error) {
       console.error('Failed to download PDF:', error);
       alert('PDFのダウンロードに失敗しました');
+    }
+  };
+
+  const handlePayment = async (invoiceId: string) => {
+    if (!paymentMethod) {
+      alert('支払い方法を選択してください');
+      return;
+    }
+
+    if (paymentMethod === 'bank_transfer' && !paymentProof) {
+      alert('振込証明書のURLを入力してください');
+      return;
+    }
+
+    setProcessingPayment(true);
+
+    try {
+      const response = await fetch(`/api/facility/invoices/${invoiceId}/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({
+          paymentMethod,
+          proofUrl: paymentMethod === 'bank_transfer' ? paymentProof : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message);
+        setSelectedInvoice(null);
+        setPaymentMethod(null);
+        setPaymentProof('');
+        loadInvoices(); // Reload to update status
+      } else {
+        alert(data.error || '支払い処理に失敗しました');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('支払い処理に失敗しました');
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -334,21 +383,93 @@ export default function FacilityInvoicesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleDownloadPDF(selectedInvoice.id, selectedInvoice.invoiceNumber)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                  >
-                    📄 PDFダウンロード
-                  </button>
-                  {selectedInvoice.status === 'issued' && (
+                <div className="space-y-4">
+                  <div className="flex gap-3">
                     <button
-                      onClick={() => alert('支払い機能は近日実装予定です')}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                      onClick={() => handleDownloadPDF(selectedInvoice.id, selectedInvoice.invoiceNumber)}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
                     >
-                      💳 支払う
+                      📄 PDFダウンロード
                     </button>
-                  )}
+                  </div>
+
+                  {selectedInvoice.status === 'issued' || selectedInvoice.status === 'sent' ? (
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">支払い方法を選択</h4>
+                      
+                      <div className="space-y-3 mb-4">
+                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="stripe"
+                            checked={paymentMethod === 'stripe'}
+                            onChange={() => setPaymentMethod('stripe')}
+                            className="mr-3"
+                          />
+                          <div>
+                            <div className="font-medium">💳 クレジットカード決済（Stripe）</div>
+                            <div className="text-xs text-gray-500">即時決済</div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="bank_transfer"
+                            checked={paymentMethod === 'bank_transfer'}
+                            onChange={() => setPaymentMethod('bank_transfer')}
+                            className="mr-3"
+                          />
+                          <div>
+                            <div className="font-medium">🏦 銀行振込</div>
+                            <div className="text-xs text-gray-500">振込証明書の提出が必要です</div>
+                          </div>
+                        </label>
+                      </div>
+
+                      {paymentMethod === 'bank_transfer' && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            振込証明書URL
+                          </label>
+                          <input
+                            type="url"
+                            value={paymentProof}
+                            onChange={(e) => setPaymentProof(e.target.value)}
+                            placeholder="https://example.com/proof.pdf"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            振込完了後、証明書をアップロードしてURLを入力してください
+                          </p>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => handlePayment(selectedInvoice.id)}
+                        disabled={!paymentMethod || processingPayment}
+                        className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        {processingPayment ? '処理中...' : '💳 支払いを実行'}
+                      </button>
+                    </div>
+                  ) : selectedInvoice.status === 'payment_pending' ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                      <p className="text-yellow-800 font-medium">⏳ 支払い確認待ち</p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        振込証明書を確認中です。しばらくお待ちください。
+                      </p>
+                    </div>
+                  ) : selectedInvoice.status === 'paid' ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                      <p className="text-green-800 font-medium">✅ 支払済み</p>
+                      <p className="text-xs text-green-700 mt-1">
+                        {selectedInvoice.paidAt && `支払日: ${formatDate(selectedInvoice.paidAt)}`}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

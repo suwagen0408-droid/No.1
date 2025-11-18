@@ -375,7 +375,7 @@ export default function PlacementsPage() {
 
             <form onSubmit={handleCreatePlacement} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   キャンペーン選択 <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -397,7 +397,7 @@ export default function PlacementsPage() {
 
               {formData.facilityCampaignId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     商品選択 <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -419,7 +419,7 @@ export default function PlacementsPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   配置場所 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -434,7 +434,7 @@ export default function PlacementsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     初期数量 <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -448,7 +448,7 @@ export default function PlacementsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     再発注しきい値
                   </label>
                   <input
@@ -462,7 +462,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   メモ
                 </label>
                 <textarea
@@ -512,7 +512,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   更新タイプ
                 </label>
                 <select
@@ -528,7 +528,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   変更量 {stockUpdate.changeType === 'restock' ? '(+)' : '(-)'}
                 </label>
                 <input
@@ -551,7 +551,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   メモ
                 </label>
                 <textarea

@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
             id: true,
             facilityName: true,
             facilityType: true,
+            userId: true,
           },
         },
       },

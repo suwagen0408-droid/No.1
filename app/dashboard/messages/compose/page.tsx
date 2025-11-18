@@ -77,6 +77,7 @@ export default function ComposeMessagePage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Received user data:', data); // Debug log
         
         // Handle different response formats
         if (data.users) {
@@ -89,6 +90,7 @@ export default function ComposeMessagePage() {
             role: 'facility',
             facility: { facilityName: f.facilityName },
           }));
+          console.log('Converted facility users:', facilityUsers); // Debug log
           setUsers(facilityUsers);
         } else if (data.manufacturers) {
           // Convert manufacturers to user format
@@ -98,8 +100,15 @@ export default function ComposeMessagePage() {
             role: 'manufacturer',
             manufacturer: { companyName: m.companyName },
           }));
+          console.log('Converted manufacturer users:', manufacturerUsers); // Debug log
           setUsers(manufacturerUsers);
+        } else {
+          console.log('No users, facilities, or manufacturers in response');
         }
+      } else {
+        console.error('Failed to load users, status:', response.status);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error data:', errorData);
       }
     } catch (error) {
       console.error('Failed to load users:', error);
@@ -186,6 +195,15 @@ export default function ComposeMessagePage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 max-w-3xl">
+        {/* Debug Info */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
+            <p><strong>Current User:</strong> {currentUser.email} ({currentUser.role})</p>
+            <p><strong>Available Users:</strong> {users.length}</p>
+            <p><strong>Loading:</strong> {loadingUsers ? 'Yes' : 'No'}</p>
+          </div>
+        )}
+        
         {/* Recipient Selection */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -193,6 +211,15 @@ export default function ComposeMessagePage() {
           </label>
           {loadingUsers ? (
             <div className="text-sm text-gray-500">読み込み中...</div>
+          ) : users.length === 0 ? (
+            <div className="text-sm text-gray-500 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <p className="font-medium text-yellow-800">メッセージ送信先がありません</p>
+              <p className="text-yellow-700 mt-1">
+                {currentUser.role === 'manufacturer' && 'キャンペーンに参加している施設がありません。'}
+                {currentUser.role === 'facility' && 'コラボレーションしているメーカーがありません。'}
+                {currentUser.role === 'admin' && 'システムに登録されているユーザーがいません。'}
+              </p>
+            </div>
           ) : (
             <select
               value={selectedRecipientId}

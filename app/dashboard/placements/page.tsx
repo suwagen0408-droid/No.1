@@ -36,14 +36,16 @@ interface Placement {
 }
 
 interface Campaign {
-  id: string;
-  name: string;
+  id: string; // This is facilityCampaign ID
+  campaignId: string; // This is the actual campaign ID
+  campaignName: string; // Campaign name
+  manufacturer: string;
   status: string;
   approvedUnits?: number;
   products: Array<{
     id: string;
     name: string;
-    mainImageUrl?: string;
+    imageUrl?: string;
   }>;
 }
 
@@ -391,12 +393,12 @@ export default function PlacementsPage() {
                 >
                   <option value="" style={{ color: '#6B7280' }}>選択してください</option>
                   {(() => {
-                    const approvedCampaigns = campaigns.filter(c => c.status === 'approved');
+                    const approvedCampaigns = campaigns.filter(c => c.status === 'approved' || c.status === 'active');
                     console.log('🔍 All campaigns:', campaigns);
-                    console.log('✅ Approved campaigns:', approvedCampaigns);
+                    console.log('✅ Approved/Active campaigns:', approvedCampaigns);
                     return approvedCampaigns.map((campaign) => (
                       <option key={campaign.id} value={campaign.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
-                        {campaign.name}
+                        {campaign.campaignName}
                       </option>
                     ));
                   })()}
@@ -416,13 +418,15 @@ export default function PlacementsPage() {
                     required
                   >
                     <option value="" style={{ color: '#6B7280' }}>選択してください</option>
-                    {campaigns
-                      .find(c => c.id === formData.facilityCampaignId)
-                      ?.products.map((product) => (
+                    {(() => {
+                      const selectedCampaign = campaigns.find(c => c.id === formData.facilityCampaignId);
+                      console.log('🎯 Selected campaign:', selectedCampaign);
+                      return selectedCampaign?.products.map((product) => (
                         <option key={product.id} value={product.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
                           {product.name}
                         </option>
-                      ))}
+                      ));
+                    })()}
                   </select>
                 </div>
               )}

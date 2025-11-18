@@ -37,7 +37,9 @@ export default function ComposeMessagePage() {
     if (currentUser) {
       loadUsers();
     }
-    
+  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     // Check if replying to a message
     const replyId = searchParams.get('reply');
     const recipientId = searchParams.get('recipient');
@@ -52,7 +54,12 @@ export default function ComposeMessagePage() {
   }, [searchParams]);
 
   const loadUsers = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('loadUsers: No currentUser, returning');
+      return;
+    }
+    
+    console.log('loadUsers: Starting with user:', currentUser.email, currentUser.role);
     
     try {
       const currentUserId = currentUser.id;
@@ -69,11 +76,16 @@ export default function ComposeMessagePage() {
         endpoint = '/api/facility/manufacturer-collaborations';
       }
 
+      console.log('loadUsers: Fetching from endpoint:', endpoint);
+      console.log('loadUsers: With userId:', currentUserId);
+
       const response = await fetch(endpoint, {
         headers: {
           'x-user-id': currentUserId,
         },
       });
+      
+      console.log('loadUsers: Response status:', response.status, response.ok);
 
       if (response.ok) {
         const data = await response.json();

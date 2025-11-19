@@ -17,11 +17,20 @@ interface Invoice {
   dueDate: string | null;
   paidAt: string | null;
   paymentStatus: string;
-  facility: {
+  invoiceItems?: Array<{
     id: string;
-    facilityName: string;
-    facilityType: string;
-  };
+    itemType: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+    facility?: {
+      facilityName: string;
+    };
+    campaign?: {
+      name: string;
+    };
+  }>;
 }
 
 export default function ManufacturerInvoicesPage() {
@@ -317,7 +326,7 @@ export default function ManufacturerInvoicesPage() {
                       {invoice.invoiceNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {invoice.facility.facilityName}
+                      {invoice.invoiceItems?.[0]?.facility?.facilityName || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(invoice.billingPeriodStart)} - {formatDate(invoice.billingPeriodEnd)}

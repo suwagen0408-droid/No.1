@@ -56,6 +56,8 @@ model User {
   approvedReviews       ProductReview[]      @relation("ApprovedBy")
   approvedFacilityCampaigns FacilityCampaign[] @relation("ApprovedBy")
   auditLogs             AuditLog[]
+  approvedReorders      ReorderRequest[]     @relation("ReorderApprover")
+  cancelledReorders     ReorderRequest[]     @relation("ReorderCanceller")
 
   @@map("users")
 }
@@ -101,10 +103,11 @@ model Manufacturer {
   
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   approver     User?      @relation("ApprovedBy", fields: [approvedBy], references: [id])
-  products     Product[]
-  campaigns    Campaign[]
-  invoices     Invoice[]
-  contracts    Contract[]
+  products        Product[]
+  campaigns       Campaign[]
+  invoices        Invoice[]
+  contracts       Contract[]
+  reorderRequests ReorderRequest[]
   
   @@map("manufacturers")
 }
@@ -166,6 +169,7 @@ model Facility {
   productReviews    ProductReview[]
   productFeedback   ProductFeedback[]
   invoiceItems      InvoiceItem[]
+  reorderRequests   ReorderRequest[]
   
   @@map("facilities")
 }
@@ -249,6 +253,7 @@ model Product {
   purchaseEvents            PurchaseEvent[]
   productReviews            ProductReview[]
   productFeedback           ProductFeedback[]
+  reorderRequests           ReorderRequest[]
   
   @@map("products")
 }
@@ -342,6 +347,7 @@ model Campaign {
   clickEvents           ClickEvent[]
   purchaseEvents        PurchaseEvent[]
   invoiceItems          InvoiceItem[]
+  reorderRequests       ReorderRequest[]
   
   @@map("campaigns")
 }
@@ -430,6 +436,7 @@ model FacilityProductPlacement {
   stockLogs        StockLog[]
   qrCodes          QrCode[]
   qrScanEvents     QrScanEvent[]
+  reorderRequests  ReorderRequest[]
   
   @@map("facility_product_placements")
 }
@@ -937,4 +944,68 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   
   @@map("audit_logs")
+}
+
+// ============================================
+// 追加発注管理
+// ============================================
+
+enum ReorderRequestStatus {
+  pending      // 発注待ち
+  approved     // メーカー承認済み
+  rejected     // メーカー却下
+  shipped      // 発送済み
+  delivered    // 配達完了
+  cancelled    // キャンセル
+}
+
+model ReorderRequest {
+  id                         String   @id @default(uuid())
+  facilityId                 String   @map("facility_id")
+  facilityProductPlacementId String   @map("facility_product_placement_id")
+  productId                  String   @map("product_id")
+  campaignId                 String   @map("campaign_id")
+  manufacturerId             String   @map("manufacturer_id")
+  
+  requestedUnits Int    @map("requested_units")
+  reason         String? // 発注理由
+  urgency        String  @default("normal") // normal, high, emergency
+  
+  status             ReorderRequestStatus @default(pending)
+  
+  approvedUnits      Int?      @map("approved_units")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+  
+  rejectionReason    String?   @map("rejection_reason")
+  
+  shippedAt          DateTime? @map("shipped_at")
+  trackingNumber     String?   @map("tracking_number")
+  estimatedDelivery  DateTime? @map("estimated_delivery")
+  
+  deliveredAt        DateTime? @map("delivered_at")
+  
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelledBy        String?   @map("cancelled_by")
+  cancellationReason String?   @map("cancellation_reason")
+  
+  // コスト情報
+  unitCost       Float?  @map("unit_cost")
+  shippingCost   Float?  @map("shipping_cost")
+  totalCost      Float?  @map("total_cost")
+  
+  notes          String?
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  facility                 Facility                 @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityProductPlacement FacilityProductPlacement @relation(fields: [facilityProductPlacementId], references: [id], onDelete: Cascade)
+  product                  Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  campaign                 Campaign                 @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  manufacturer             Manufacturer             @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  approver                 User?                    @relation("ReorderApprover", fields: [approvedBy], references: [id])
+  canceller                User?                    @relation("ReorderCanceller", fields: [cancelledBy], references: [id])
+  
+  @@map("reorder_requests")
 }

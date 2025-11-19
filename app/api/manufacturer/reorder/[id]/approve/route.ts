@@ -116,9 +116,9 @@ export async function POST(
       },
     });
 
-    // Create payment record based on campaign payment timing
-    if (campaign.paymentTiming === 'on_approval') {
-      // Immediate payment required (paid_sampling)
+    // Create payment record based on campaign payment timing and total cost
+    if (campaign.paymentTiming === 'on_approval' || (campaign.paymentTiming === 'none' && totalCost > 0)) {
+      // Immediate payment required (paid_sampling) or cost-bearing with no specific timing
       await prisma.facilityPayment.create({
         data: {
           facilityId: reorderRequest.facilityId,
@@ -159,7 +159,7 @@ export async function POST(
         },
       });
     } else {
-      // Free or no payment required
+      // Free or no payment required (totalCost is 0)
       await prisma.notification.create({
         data: {
           userId: reorderRequest.facility.userId,

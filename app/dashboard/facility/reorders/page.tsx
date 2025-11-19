@@ -66,6 +66,7 @@ export default function FacilityReordersPage() {
   const [reorders, setReorders] = useState<ReorderRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [showNewReorderModal, setShowNewReorderModal] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -146,12 +147,20 @@ export default function FacilityReordersPage() {
                 追加発注の履歴と状況を確認できます
               </p>
             </div>
-            <button
-              onClick={() => router.push('/dashboard/facility/inventory')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              在庫管理に戻る
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => router.push('/dashboard/facility/inventory')}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                在庫管理に戻る
+              </button>
+              <button
+                onClick={() => router.push('/dashboard/facility/inventory')}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                ➕ 新規発注（在庫管理画面から）
+              </button>
+            </div>
           </div>
         </div>
 

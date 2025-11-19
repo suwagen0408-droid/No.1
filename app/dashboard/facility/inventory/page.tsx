@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/components/DashboardLayout';
 import StockUpdateModal from '@/app/components/StockUpdateModal';
+import ReorderButton from '@/app/components/ReorderButton';
 
 interface Placement {
   id: string;
@@ -320,12 +321,23 @@ export default function FacilityInventoryPage() {
                             </p>
                           </div>
 
-                          <button
-                            onClick={() => openUpdateModal(placement)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm whitespace-nowrap"
-                          >
-                            📝 在庫更新
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => openUpdateModal(placement)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm whitespace-nowrap"
+                            >
+                              📝 在庫更新
+                            </button>
+                            {placement.currentUnits <= placement.reorderThreshold && (
+                              <ReorderButton
+                                placementId={placement.id}
+                                productName={placement.product.name}
+                                currentUnits={placement.currentUnits}
+                                threshold={placement.reorderThreshold}
+                                onSuccess={loadInventory}
+                              />
+                            )}
+                          </div>
                         </div>
 
                         {/* Stock Level Bar */}

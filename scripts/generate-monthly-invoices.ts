@@ -87,9 +87,47 @@ async function generateMonthlyInvoices(year: number, month: number) {
       },
     });
 
-    console.log(`📊 Found ${facilityCampaigns.length} invoice_later transactions\n`);
+    console.log(`📊 Found ${facilityCampaigns.length} invoice_later transactions`);
 
-    if (facilityCampaigns.length === 0) {
+    // Find all approved reorder requests with invoice_later payment in the period
+    const reorderRequests = await prisma.reorderRequest.findMany({
+      where: {
+        status: {
+          in: ['approved', 'shipped', 'delivered'],
+        },
+        campaign: {
+          paymentTiming: 'monthly_invoice',
+        },
+        approvedAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        facility: {
+          select: {
+            id: true,
+            facilityName: true,
+            userId: true,
+          },
+        },
+        product: {
+          select: {
+            name: true,
+          },
+        },
+        campaign: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    console.log(`📦 Found ${reorderRequests.length} reorder requests\n`);
+
+    if (facilityCampaigns.length === 0 && reorderRequests.length === 0) {
       console.log('✅ No invoices to generate for this period.');
       return;
     }
@@ -120,16 +158,49 @@ async function generateMonthlyInvoices(year: number, month: number) {
       facilitiesMap.get(facilityId)!.push(item);
     }
 
+    // Add reorder requests to invoice items
+    for (const reorder of reorderRequests) {
+      const facilityId = reorder.facilityId;
+      const unitPrice = reorder.unitCost || 0;
+      const units = reorder.approvedUnits || reorder.requestedUnits;
+      const amount = unitPrice * units;
+      const shippingFee = reorder.shippingCost || 0;
+
+      const item: InvoiceItem = {
+        facilityId,
+        facilityName: reorder.facility.facilityName,
+        campaignId: reorder.campaign.id,
+        campaignName: `【追加発注】${reorder.product.name}`,
+        units,
+        unitPrice,
+        amount,
+        shippingFee,
+      };
+
+      if (!facilitiesMap.has(facilityId)) {
+        facilitiesMap.set(facilityId, []);
+      }
+      facilitiesMap.get(facilityId)!.push(item);
+    }
+
     console.log(`🏢 Generating invoices for ${facilitiesMap.size} facilities...\n`);
 
     let invoiceCount = 0;
 
     for (const [facilityId, items] of facilitiesMap.entries()) {
-      const totalAmount = items.reduce((sum, item) => sum + item.amount + item.shippingFee, 0);
       const invoiceNumber = `INV-F-${year}${String(month).padStart(2, '0')}-${String(invoiceCount + 1).padStart(5, '0')}`;
 
       console.log(`📄 Creating invoice ${invoiceNumber} for ${items[0].facilityName}...`);
-      console.log(`   Total: ¥${totalAmount.toLocaleString()} (${items.length} items)`);
+
+      // Calculate totals
+      const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
+      const totalShipping = items.reduce((sum, item) => sum + item.shippingFee, 0);
+      const tax = 0; // Tax calculation can be added later
+      const grandTotal = subtotal + totalShipping + tax;
+
+      console.log(`   Subtotal: ¥${subtotal.toLocaleString()}`);
+      console.log(`   Shipping: ¥${totalShipping.toLocaleString()}`);
+      console.log(`   Total: ¥${grandTotal.toLocaleString()} (${items.length} items)`);
 
       // Create FacilityInvoice
       const invoice = await prisma.facilityInvoice.create({
@@ -138,10 +209,9 @@ async function generateMonthlyInvoices(year: number, month: number) {
           invoiceNumber,
           billingPeriodStart: startDate,
           billingPeriodEnd: endDate,
-          subtotal: items.reduce((sum, item) => sum + item.amount, 0),
-          shippingFee: items.reduce((sum, item) => sum + item.shippingFee, 0),
-          tax: 0, // Tax calculation can be added later
-          total: totalAmount,
+          subtotal: subtotal,
+          tax: tax,
+          total: grandTotal,
           status: 'issued',
           issuedAt: new Date(),
           dueDate: new Date(year, month, 20), // Due on 20th of next month
@@ -195,7 +265,7 @@ async function generateMonthlyInvoices(year: number, month: number) {
           userId: facility.userId,
           type: 'invoice_issued',
           title: '請求書が発行されました',
-          message: `${year}年${month}月分の請求書（${invoiceNumber}）が発行されました。金額: ¥${totalAmount.toLocaleString()}`,
+          message: `${year}年${month}月分の請求書（${invoiceNumber}）が発行されました。金額: ¥${grandTotal.toLocaleString()}`,
           relatedResourceType: 'FacilityInvoice',
           relatedResourceId: invoice.id,
         },
@@ -212,7 +282,7 @@ async function generateMonthlyInvoices(year: number, month: number) {
             subject: '請求書発行のお知らせ',
             templateData: {
               invoiceNumber,
-              total: totalAmount,
+              total: grandTotal,
               dueDate: new Date(year, month, 20).toISOString(),
               invoiceUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/facility/invoices`,
             },

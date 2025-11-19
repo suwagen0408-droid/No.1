@@ -683,6 +683,16 @@ export default function FacilityInventoryPage() {
                             <p className="font-semibold text-gray-900">
                               {formatCurrency(reorder.totalCost, 'JPY', { showCurrency: true })}
                             </p>
+                            {(reorder.unitCost || reorder.shippingCost) && (
+                              <div className="mt-1 text-xs text-gray-500">
+                                {reorder.unitCost && (
+                                  <div>商品: {formatCurrency((reorder.unitCost * (reorder.approvedUnits || reorder.requestedUnits)), 'JPY', { showCurrency: true })}</div>
+                                )}
+                                {reorder.shippingCost && reorder.shippingCost > 0 && (
+                                  <div>配送: {formatCurrency(reorder.shippingCost, 'JPY', { showCurrency: true })}</div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                         <div>
@@ -719,6 +729,23 @@ export default function FacilityInventoryPage() {
                           <p className="text-sm text-red-700">
                             <span className="font-medium">却下理由:</span> {reorder.rejectionReason}
                           </p>
+                        </div>
+                      )}
+
+                      {/* Payment action for approved orders */}
+                      {reorder.status === 'approved' && reorder.totalCost && reorder.totalCost > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-gray-600">
+                              💳 支払い手続きが必要です
+                            </p>
+                            <button
+                              onClick={() => router.push('/dashboard/facility/invoices')}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              支払い管理へ
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

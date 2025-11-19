@@ -152,13 +152,7 @@ export default function DashboardLayout({ children, user: propUser }: DashboardL
                   href="/dashboard/facility/inventory"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  在庫管理
-                </Link>
-                <Link
-                  href="/dashboard/facility/reorders"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  追加発注リクエスト
+                  在庫・発注管理
                 </Link>
                 <Link
                   href="/dashboard/facility/payments"

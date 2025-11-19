@@ -36,7 +36,7 @@ const productSchema = z.object({
   currency: z.string().default('JPY'),
   ecUrl: z.string().url('Valid EC URL is required'),
   ecPlatform: z.string().optional(),
-  mainImageUrl: z.string().url().optional(),
+  mainImageUrl: z.string().optional(), // Can be absolute URL or relative path
 });
 
 // GET /api/manufacturer/products - Get all products for logged-in manufacturer

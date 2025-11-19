@@ -55,13 +55,8 @@ export async function POST(request: NextRequest) {
     const filepath = join(uploadDir, filename);
     await writeFile(filepath, buffer);
 
-    // Get the base URL from the request
-    const protocol = request.headers.get('x-forwarded-proto') || 'https';
-    const host = request.headers.get('host') || 'localhost:3000';
-    const baseUrl = `${protocol}://${host}`;
-
-    // Return the public URL
-    const imageUrl = `${baseUrl}/uploads/${filename}`;
+    // Return the relative path (works regardless of port or domain)
+    const imageUrl = `/uploads/${filename}`;
 
     return NextResponse.json({
       success: true,

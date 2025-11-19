@@ -35,7 +35,7 @@ const productSchema = z.object({
   currency: z.string().optional(),
   ecUrl: z.string().url().optional(),
   ecPlatform: z.string().optional(),
-  mainImageUrl: z.string().url().optional(),
+  mainImageUrl: z.string().optional(), // Can be absolute URL or relative path
 });
 
 // GET /api/manufacturer/products/[id] - Get single product

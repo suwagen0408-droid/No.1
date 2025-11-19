@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         // Paid sampling - requires immediate payment
         newStatus = 'pending_payment';
         
-        // Create payment record for facility
+        // Create payment record and invoice for facility
         if (campaign.unitPrice) {
           const amount = campaign.unitPrice * approvedUnits;
           const shippingFee = campaign.shippingCostCoveredBy === 'facility' ? (campaign.shippingFee || 0) : 0;
@@ -173,6 +173,52 @@ export async function POST(request: NextRequest) {
               totalAmount,
               paymentMethod: 'stripe', // Default, can be changed by facility
               paymentStatus: 'pending',
+            },
+          });
+
+          // Create facility invoice for immediate payment
+          const invoiceCount = await prisma.facilityInvoice.count({
+            where: { facilityId: facilityCampaign.facilityId },
+          });
+          const invoiceNumber = `FINV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
+          
+          const subtotal = totalAmount;
+          const tax = Math.floor(subtotal * 0.1);
+          const total = subtotal + tax;
+
+          await prisma.facilityInvoice.create({
+            data: {
+              facilityId: facilityCampaign.facilityId,
+              invoiceNumber,
+              billingPeriodStart: new Date(),
+              billingPeriodEnd: new Date(),
+              subtotal,
+              tax,
+              total,
+              currency: 'JPY',
+              status: 'issued',
+              issuedAt: new Date(),
+              dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+              paymentStatus: 'pending',
+              notes: `キャンペーン承認: ${campaign.name} (${approvedUnits}個)`,
+              facilityInvoiceItems: {
+                create: [
+                  {
+                    itemType: 'campaign',
+                    description: `${campaign.name} - 商品配置`,
+                    quantity: approvedUnits,
+                    unitPrice: campaign.unitPrice,
+                    amount,
+                  },
+                  ...(shippingFee > 0 ? [{
+                    itemType: 'shipping',
+                    description: '配送料',
+                    quantity: 1,
+                    unitPrice: shippingFee,
+                    amount: shippingFee,
+                  }] : []),
+                ],
+              },
             },
           });
         }

@@ -116,10 +116,10 @@ export async function POST(
       },
     });
 
-    // Create payment record based on campaign payment timing and total cost
+    // Create payment record and invoice based on campaign payment timing and total cost
     if (campaign.paymentTiming === 'on_approval' || (campaign.paymentTiming === 'none' && totalCost > 0)) {
       // Immediate payment required (paid_sampling) or cost-bearing with no specific timing
-      await prisma.facilityPayment.create({
+      const payment = await prisma.facilityPayment.create({
         data: {
           facilityId: reorderRequest.facilityId,
           facilityCampaignId: reorderRequest.facilityProductPlacement.facilityCampaignId,
@@ -132,13 +132,59 @@ export async function POST(
         },
       });
 
+      // Create facility invoice for immediate payment
+      const invoiceCount = await prisma.facilityInvoice.count({
+        where: { facilityId: reorderRequest.facilityId },
+      });
+      const invoiceNumber = `FINV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
+      
+      const subtotal = totalCost;
+      const tax = Math.floor(subtotal * 0.1);
+      const total = subtotal + tax;
+
+      await prisma.facilityInvoice.create({
+        data: {
+          facilityId: reorderRequest.facilityId,
+          invoiceNumber,
+          billingPeriodStart: new Date(),
+          billingPeriodEnd: new Date(),
+          subtotal,
+          tax,
+          total,
+          currency: 'JPY',
+          status: 'issued',
+          issuedAt: new Date(),
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+          paymentStatus: 'pending',
+          notes: `追加発注承認: ${reorderRequest.product.name} (${validatedData.approvedUnits}個)`,
+          facilityInvoiceItems: {
+            create: [
+              {
+                itemType: 'reorder',
+                description: `${reorderRequest.product.name} - 追加発注`,
+                quantity: validatedData.approvedUnits,
+                unitPrice: unitPrice,
+                amount: unitCost,
+              },
+              ...(shippingCost > 0 ? [{
+                itemType: 'shipping',
+                description: '配送料',
+                quantity: 1,
+                unitPrice: shippingCost,
+                amount: shippingCost,
+              }] : []),
+            ],
+          },
+        },
+      });
+
       // Notify facility about payment required
       await prisma.notification.create({
         data: {
           userId: reorderRequest.facility.userId,
           type: 'reorder_approved_payment_required',
           title: '追加発注が承認されました（支払いが必要です）',
-          message: `「${reorderRequest.product.name}」の追加発注（${validatedData.approvedUnits}個）が承認されました。お支払い手続きをお願いします。金額: ¥${totalCost.toLocaleString()}`,
+          message: `「${reorderRequest.product.name}」の追加発注（${validatedData.approvedUnits}個）が承認されました。お支払い手続きをお願いします。金額: ¥${total.toLocaleString()}`,
           relatedResourceType: 'ReorderRequest',
           relatedResourceId: id,
         },

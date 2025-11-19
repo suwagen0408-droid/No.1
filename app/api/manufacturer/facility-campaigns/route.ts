@@ -177,10 +177,10 @@ export async function POST(request: NextRequest) {
           });
 
           // Create facility invoice for immediate payment
-          const invoiceCount = await prisma.facilityInvoice.count({
-            where: { facilityId: facilityCampaign.facilityId },
-          });
-          const invoiceNumber = `FINV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
+          // Generate unique invoice number using timestamp to avoid race conditions
+          const now = new Date();
+          const timestamp = now.getTime().toString().slice(-8); // Last 8 digits of timestamp
+          const invoiceNumber = `FINV-${now.getFullYear()}-${timestamp}`;
           
           const subtotal = totalAmount;
           const tax = Math.floor(subtotal * 0.1);

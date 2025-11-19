@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -33,8 +35,8 @@ export default function LoginPage() {
         throw new Error(data.error || 'ログインに失敗しました');
       }
 
-      // Store user info in localStorage (in production, use secure cookies/JWT)
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // Use AuthContext to store user info
+      login(data.user);
       
       // Redirect to dashboard
       router.push('/dashboard');

@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import NotificationBell from './NotificationBell';
+import { useAuth } from '@/lib/auth-context';
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  user: {
+  user?: {
     id: string;
     email: string;
     role: 'manufacturer' | 'facility' | 'admin';
@@ -15,12 +16,15 @@ interface DashboardLayoutProps {
   };
 }
 
-export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, user: propUser }: DashboardLayoutProps) {
   const router = useRouter();
+  const { user: contextUser, logout } = useAuth();
+
+  // Use prop user if provided, otherwise use context user
+  const user = propUser || contextUser;
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/');
+    logout();
   };
 
   return (

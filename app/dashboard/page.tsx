@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '../components/DashboardLayout';
+import { useAuth } from '@/lib/auth-context';
 
 interface User {
   id: string;
@@ -15,7 +16,7 @@ interface User {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     totalManufacturers: 0,
     totalFacilities: 0,
@@ -27,32 +28,33 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) return;
+
     // Check if user is logged in
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
+    if (!user) {
       router.push('/login');
       return;
     }
-
-    const userData = JSON.parse(userStr);
     
     // Redirect manufacturer to their dedicated dashboard
-    if (userData.role === 'manufacturer') {
+    if (user.role === 'manufacturer') {
       router.push('/dashboard/manufacturer');
       return;
     }
     
     // Redirect facility to their dedicated dashboard
-    if (userData.role === 'facility') {
+    if (user.role === 'facility') {
       router.push('/dashboard/facility');
       return;
     }
 
-    setUser(userData);
-    loadStats(userData);
-  }, [router]);
+    loadStats(user);
+  }, [user, authLoading, router]);
 
-  const loadStats = async (userData: User) => {
+  const loadStats = async (userData: User | null) => {
+    if (!userData) return;
+    
     try {
       console.log('Loading stats for role:', userData.role);
       if (userData.role === 'admin') {
@@ -78,7 +80,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!user) {
+  if (authLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-gray-600">読み込み中...</div>
@@ -87,7 +89,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout user={user}>
+    <DashboardLayout>
       <div className="rounded-lg bg-white p-6 shadow-sm">
             <h1 className="mb-6 text-2xl font-bold text-gray-900">
               ダッシュボード

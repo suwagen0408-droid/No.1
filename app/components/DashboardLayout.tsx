@@ -27,6 +27,15 @@ export default function DashboardLayout({ children, user: propUser }: DashboardL
     logout();
   };
 
+  // Show loading state if user is not available yet
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">読み込み中...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}

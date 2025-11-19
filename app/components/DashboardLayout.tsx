@@ -54,7 +54,7 @@ export default function DashboardLayout({ children, user: propUser }: DashboardL
       {/* Sidebar + Main Content */}
       <div className="container mx-auto flex px-4 py-6">
         {/* Sidebar */}
-        <aside className="w-64 rounded-lg bg-white p-4 shadow-sm h-fit sticky top-20">
+        <aside className="w-64 flex-shrink-0 rounded-lg bg-white p-4 shadow-sm h-fit sticky top-20">
           <nav className="space-y-2">
             <Link
               href={

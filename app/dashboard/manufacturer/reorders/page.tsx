@@ -54,6 +54,9 @@ export default function ManufacturerReordersPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
+  const [approvedUnits, setApprovedUnits] = useState<number>(0);
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [trackingNumber, setTrackingNumber] = useState<string>('');
 
   useEffect(() => {
     if (authLoading) return;
@@ -224,6 +227,7 @@ export default function ManufacturerReordersPage() {
                           <button
                             onClick={() => {
                               setSelectedReorder(reorder);
+                              setApprovedUnits(reorder.requestedUnits);
                               setShowApproveModal(true);
                             }}
                             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
@@ -263,31 +267,39 @@ export default function ManufacturerReordersPage() {
 
       {/* Approve Modal */}
       {showApproveModal && selectedReorder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold mb-4">追加発注を承認</h3>
             <p className="text-sm text-gray-600 mb-4">
               承認数量を入力してください
             </p>
             <input
               type="number"
-              defaultValue={selectedReorder.requestedUnits}
-              className="w-full border rounded-lg px-4 py-2 mb-4"
-              id="approvedUnits"
+              value={approvedUnits}
+              onChange={(e) => setApprovedUnits(parseInt(e.target.value) || 0)}
+              min="1"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
             <div className="flex space-x-2">
               <button
                 onClick={() => {
-                  const input = document.getElementById('approvedUnits') as HTMLInputElement;
-                  handleApprove(selectedReorder.id, parseInt(input.value));
+                  if (approvedUnits > 0) {
+                    handleApprove(selectedReorder.id, approvedUnits);
+                  } else {
+                    alert('承認数量は1以上を入力してください');
+                  }
                 }}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                disabled={approvedUnits <= 0}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 承認
               </button>
               <button
-                onClick={() => setShowApproveModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={() => {
+                  setShowApproveModal(false);
+                  setApprovedUnits(0);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 キャンセル
               </button>
@@ -298,31 +310,39 @@ export default function ManufacturerReordersPage() {
 
       {/* Reject Modal */}
       {showRejectModal && selectedReorder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold mb-4">追加発注を却下</h3>
             <p className="text-sm text-gray-600 mb-4">
               却下理由を入力してください
             </p>
             <textarea
-              className="w-full border rounded-lg px-4 py-2 mb-4"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:ring-2 focus:ring-red-500 focus:border-transparent"
               rows={3}
-              id="rejectionReason"
               placeholder="却下理由を入力..."
             />
             <div className="flex space-x-2">
               <button
                 onClick={() => {
-                  const input = document.getElementById('rejectionReason') as HTMLTextAreaElement;
-                  handleReject(selectedReorder.id, input.value);
+                  if (rejectionReason.trim()) {
+                    handleReject(selectedReorder.id, rejectionReason);
+                  } else {
+                    alert('却下理由を入力してください');
+                  }
                 }}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={!rejectionReason.trim()}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 却下
               </button>
               <button
-                onClick={() => setShowRejectModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 キャンセル
               </button>
@@ -333,31 +353,34 @@ export default function ManufacturerReordersPage() {
 
       {/* Ship Modal */}
       {showShipModal && selectedReorder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold mb-4">発送情報を登録</h3>
             <p className="text-sm text-gray-600 mb-4">
               追跡番号を入力してください（任意）
             </p>
             <input
               type="text"
-              className="w-full border rounded-lg px-4 py-2 mb-4"
-              id="trackingNumber"
+              value={trackingNumber}
+              onChange={(e) => setTrackingNumber(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="追跡番号"
             />
             <div className="flex space-x-2">
               <button
                 onClick={() => {
-                  const input = document.getElementById('trackingNumber') as HTMLInputElement;
-                  handleShip(selectedReorder.id, input.value);
+                  handleShip(selectedReorder.id, trackingNumber);
                 }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 発送登録
               </button>
               <button
-                onClick={() => setShowShipModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={() => {
+                  setShowShipModal(false);
+                  setTrackingNumber('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 キャンセル
               </button>

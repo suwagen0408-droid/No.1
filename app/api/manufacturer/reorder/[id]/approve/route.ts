@@ -36,6 +36,7 @@ export async function POST(
           select: {
             id: true,
             facilityName: true,
+            userId: true,
           },
         },
         product: {
@@ -134,7 +135,7 @@ export async function POST(
       // Notify facility about payment required
       await prisma.notification.create({
         data: {
-          userId: reorderRequest.facility.id,
+          userId: reorderRequest.facility.userId,
           type: 'reorder_approved_payment_required',
           title: '追加発注が承認されました（支払いが必要です）',
           message: `「${reorderRequest.product.name}」の追加発注（${validatedData.approvedUnits}個）が承認されました。お支払い手続きをお願いします。金額: ¥${totalCost.toLocaleString()}`,
@@ -149,7 +150,7 @@ export async function POST(
       // Notify facility (no payment required now)
       await prisma.notification.create({
         data: {
-          userId: reorderRequest.facility.id,
+          userId: reorderRequest.facility.userId,
           type: 'reorder_approved',
           title: '追加発注が承認されました',
           message: `「${reorderRequest.product.name}」の追加発注（${validatedData.approvedUnits}個）が承認されました。月次請求書に含まれます。`,
@@ -161,7 +162,7 @@ export async function POST(
       // Free or no payment required
       await prisma.notification.create({
         data: {
-          userId: reorderRequest.facility.id,
+          userId: reorderRequest.facility.userId,
           type: 'reorder_approved',
           title: '追加発注が承認されました',
           message: `「${reorderRequest.product.name}」の追加発注（${validatedData.approvedUnits}個）が承認されました。`,

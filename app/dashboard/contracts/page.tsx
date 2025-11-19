@@ -35,12 +35,26 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [userRole, setUserRole] = useState<string>('');
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetchContracts();
-  }, [filter]);
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const userData = JSON.parse(userStr);
+      setUser(userData);
+      setUserRole(userData.role || '');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchContracts();
+    }
+  }, [filter, user]);
 
   const fetchContracts = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -48,11 +62,14 @@ export default function ContractsPage() {
         params.append('status', filter);
       }
       
-      const response = await fetch(`/api/contracts?${params.toString()}`);
+      const response = await fetch(`/api/contracts?${params.toString()}`, {
+        headers: {
+          'x-user-id': user.id,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setContracts(data.contracts || []);
-        setUserRole(data.userRole || '');
       }
     } catch (error) {
       console.error('Failed to fetch contracts:', error);
@@ -100,9 +117,14 @@ export default function ContractsPage() {
       return;
     }
 
+    if (!user) return;
+
     try {
       const response = await fetch(`/api/contracts/${id}`, {
         method: 'DELETE',
+        headers: {
+          'x-user-id': user.id,
+        },
       });
 
       if (response.ok) {

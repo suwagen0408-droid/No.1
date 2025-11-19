@@ -24,12 +24,24 @@ export default function FacilityInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all'); // all, pending, paid, overdue
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetchInvoices();
-  }, [filter]);
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchInvoices();
+    }
+  }, [filter, user]);
 
   const fetchInvoices = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -37,7 +49,11 @@ export default function FacilityInvoicesPage() {
         params.append('status', filter);
       }
       
-      const response = await fetch(`/api/facility/invoices?${params.toString()}`);
+      const response = await fetch(`/api/facility/invoices?${params.toString()}`, {
+        headers: {
+          'x-user-id': user.id,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setInvoices(data.invoices || []);

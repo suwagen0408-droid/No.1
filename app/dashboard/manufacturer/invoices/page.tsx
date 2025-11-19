@@ -28,6 +28,7 @@ export default function ManufacturerInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -38,10 +39,21 @@ export default function ManufacturerInvoicesPage() {
   });
 
   useEffect(() => {
-    fetchInvoices();
-  }, [filter]);
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchInvoices();
+    }
+  }, [filter, user]);
 
   const fetchInvoices = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -49,7 +61,11 @@ export default function ManufacturerInvoicesPage() {
         params.append('status', filter);
       }
       
-      const response = await fetch(`/api/manufacturer/invoices?${params.toString()}`);
+      const response = await fetch(`/api/manufacturer/invoices?${params.toString()}`, {
+        headers: {
+          'x-user-id': user.id,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setInvoices(data.invoices || []);

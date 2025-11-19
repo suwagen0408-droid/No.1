@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface Contract {
@@ -15,316 +16,310 @@ interface Contract {
   autoRenew: boolean;
   renewalPeriod: number | null;
   status: string;
-  monthlyFee: number | null;
-  setupFee: number | null;
-  currency: string;
+  terms: string | null;
   paymentTerms: string | null;
   deliveryTerms: string | null;
   documentUrl: string | null;
-  signedAt: string | null;
-  manufacturerSignedAt: string | null;
-  facilitySignedAt: string | null;
-  terminatedAt: string | null;
-  terminatedBy: string | null;
-  terminationReason: string | null;
-  createdAt: string;
+  monthlyFee: number | null;
+  setupFee: number | null;
+  currency: string;
   manufacturer: {
+    id: string;
     companyName: string;
+    address: string | null;
+    phone: string | null;
   };
   facility: {
+    id: string;
     facilityName: string;
+    address: string | null;
+    phone: string | null;
   };
+  createdAt: string;
+  updatedAt: string;
 }
 
-export default function ContractDetailPage() {
+export default function ContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const params = useParams();
-  const contractId = params.id as string;
-  
-  const [user, setUser] = useState<any>(null);
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      router.push('/login');
-      return;
-    }
-    const userData = JSON.parse(userStr);
-    setUser(userData);
-  }, [router]);
+    params.then((p) => setResolvedParams(p));
+  }, [params]);
 
   useEffect(() => {
-    if (user && contractId) {
-      loadContract();
+    if (resolvedParams) {
+      fetchContract();
     }
-  }, [user, contractId]);
+  }, [resolvedParams]);
 
-  const loadContract = async () => {
-    if (!user || !contractId) return;
-    
+  const fetchContract = async () => {
+    if (!resolvedParams) return;
+
     try {
-      const response = await fetch(`/api/contracts/${contractId}`, {
-        headers: {
-          'x-user-id': user.id,
-        },
-      });
-      
+      setLoading(true);
+      const response = await fetch(`/api/contracts/${resolvedParams.id}`);
       if (response.ok) {
         const data = await response.json();
         setContract(data.contract);
       } else {
-        alert('契約が見つかりません');
+        alert('契約の取得に失敗しました');
         router.push('/dashboard/contracts');
       }
     } catch (error) {
-      console.error('Failed to load contract:', error);
-      alert('契約の読み込みに失敗しました');
+      console.error('Failed to fetch contract:', error);
+      alert('契約の取得に失敗しました');
+      router.push('/dashboard/contracts');
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; className: string }> = {
-      draft: { label: '下書き', className: 'bg-gray-100 text-gray-800' },
-      active: { label: '有効', className: 'bg-green-100 text-green-800' },
-      expired: { label: '期限切れ', className: 'bg-red-100 text-red-800' },
-      terminated: { label: '終了', className: 'bg-gray-100 text-gray-800' },
-      renewed: { label: '更新済み', className: 'bg-blue-100 text-blue-800' },
+    const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+      draft: { bg: 'bg-gray-100', text: 'text-gray-800', label: '下書き' },
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '承認待ち' },
+      active: { bg: 'bg-green-100', text: 'text-green-800', label: '有効' },
+      expired: { bg: 'bg-red-100', text: 'text-red-800', label: '期限切れ' },
+      terminated: { bg: 'bg-gray-100', text: 'text-gray-600', label: '終了' },
     };
 
-    const statusInfo = statusMap[status] || statusMap.draft;
+    const config = statusConfig[status] || statusConfig.draft;
     return (
-      <span className={`px-3 py-1 text-sm font-semibold rounded ${statusInfo.className}`}>
-        {statusInfo.label}
+      <span className={`px-3 py-1 text-sm font-medium rounded-full ${config.bg} ${config.text}`}>
+        {config.label}
       </span>
     );
   };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('ja-JP');
+    return new Date(dateString).toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
-  const formatCurrency = (amount: number | null) => {
+  const formatCurrency = (amount: number | null, currency: string = 'JPY') => {
     if (amount === null) return '-';
-    return `¥${amount.toLocaleString()}`;
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
   };
 
-  if (!user) {
-    return <div className="p-8">Loading...</div>;
-  }
-
-  if (loading) {
+  if (loading || !contract) {
     return (
-      <DashboardLayout user={user}>
-        <div className="p-8">
-          <div className="text-center">読み込み中...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!contract) {
-    return (
-      <DashboardLayout user={user}>
-        <div className="p-8">
-          <div className="text-center text-red-600">契約が見つかりません</div>
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <p className="mt-2 text-sm text-gray-500">読み込み中...</p>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout user={user}>
-      <div className="p-8 max-w-5xl mx-auto">
+    <DashboardLayout>
+      <div className="space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => router.back()}
-              className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/dashboard/contracts"
+              className="text-gray-400 hover:text-gray-600"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              戻る
-            </button>
-            {getStatusBadge(contract.status)}
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{contract.title}</h1>
+              <p className="mt-1 text-sm text-gray-500">契約番号: {contract.contractNumber}</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{contract.title}</h1>
-          <p className="text-gray-600">契約番号: {contract.contractNumber}</p>
+          <div className="flex items-center space-x-3">
+            {getStatusBadge(contract.status)}
+            {contract.status === 'draft' && (
+              <Link
+                href={`/dashboard/contracts/${contract.id}/edit`}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                編集
+              </Link>
+            )}
+          </div>
         </div>
 
-        {/* Main Content */}
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">基本情報</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600">メーカー</p>
-                <p className="font-medium text-gray-900">{contract.manufacturer.companyName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">施設</p>
-                <p className="font-medium text-gray-900">{contract.facility.facilityName}</p>
-              </div>
-              {contract.description && (
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600 mb-2">契約説明</p>
-                  <p className="text-gray-900">{contract.description}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contract Period */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">契約期間</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600">開始日</p>
-                <p className="font-medium text-gray-900">{formatDate(contract.startDate)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">終了日</p>
-                <p className="font-medium text-gray-900">{formatDate(contract.endDate)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">自動更新</p>
-                <p className="font-medium text-gray-900">
-                  {contract.autoRenew ? (
-                    <span className="text-green-600">✓ 有効（{contract.renewalPeriod}ヶ月毎）</span>
-                  ) : (
-                    <span className="text-gray-500">無効</span>
-                  )}
-                </p>
-              </div>
-              {contract.renewalDate && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Contract Information */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">契約情報</h2>
+              <dl className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-600">次回更新日</p>
-                  <p className="font-medium text-gray-900">{formatDate(contract.renewalDate)}</p>
+                  <dt className="text-sm font-medium text-gray-500">契約期間</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {formatDate(contract.startDate)} 〜 {formatDate(contract.endDate)}
+                  </dd>
                 </div>
-              )}
+                {contract.autoRenew && (
+                  <>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">自動更新</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        有効 ({contract.renewalPeriod || '-'}ヶ月毎)
+                      </dd>
+                    </div>
+                    {contract.renewalDate && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">次回更新日</dt>
+                        <dd className="mt-1 text-sm text-gray-900">
+                          {formatDate(contract.renewalDate)}
+                        </dd>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">説明</dt>
+                  <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                    {contract.description || '-'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Financial Information */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">料金情報</h2>
+              <dl className="space-y-3">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">初期費用</dt>
+                  <dd className="mt-1 text-lg font-semibold text-gray-900">
+                    {formatCurrency(contract.setupFee, contract.currency)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">月額料金</dt>
+                  <dd className="mt-1 text-lg font-semibold text-gray-900">
+                    {formatCurrency(contract.monthlyFee, contract.currency)}
+                  </dd>
+                </div>
+                {contract.paymentTerms && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">支払条件</dt>
+                    <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                      {contract.paymentTerms}
+                    </dd>
+                  </div>
+                )}
+              </dl>
             </div>
           </div>
 
-          {/* Financial Terms */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">料金設定</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600">月額料金</p>
-                <p className="font-medium text-gray-900 text-lg">{formatCurrency(contract.monthlyFee)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">初期費用</p>
-                <p className="font-medium text-gray-900 text-lg">{formatCurrency(contract.setupFee)}</p>
-              </div>
-              {contract.paymentTerms && (
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600 mb-2">支払い条件</p>
-                  <p className="text-gray-900">{contract.paymentTerms}</p>
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Manufacturer Information */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">メーカー情報</h2>
+              <dl className="space-y-3">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">会社名</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{contract.manufacturer.companyName}</dd>
+                </div>
+                {contract.manufacturer.address && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">住所</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{contract.manufacturer.address}</dd>
+                  </div>
+                )}
+                {contract.manufacturer.phone && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">電話番号</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{contract.manufacturer.phone}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            {/* Facility Information */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">施設情報</h2>
+              <dl className="space-y-3">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">施設名</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{contract.facility.facilityName}</dd>
+                </div>
+                {contract.facility.address && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">住所</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{contract.facility.address}</dd>
+                  </div>
+                )}
+                {contract.facility.phone && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">電話番号</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{contract.facility.phone}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        {/* Terms and Conditions */}
+        {(contract.terms || contract.deliveryTerms) && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">契約条件</h2>
+            <div className="space-y-4">
+              {contract.terms && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">契約条項</h3>
+                  <div className="text-sm text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded">
+                    {contract.terms}
+                  </div>
                 </div>
               )}
               {contract.deliveryTerms && (
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600 mb-2">納品条件</p>
-                  <p className="text-gray-900">{contract.deliveryTerms}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Signing Status */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">署名状況</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600">メーカー署名日</p>
-                <p className="font-medium text-gray-900">
-                  {contract.manufacturerSignedAt ? (
-                    <span className="text-green-600">✓ {formatDate(contract.manufacturerSignedAt)}</span>
-                  ) : (
-                    <span className="text-gray-500">未署名</span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">施設署名日</p>
-                <p className="font-medium text-gray-900">
-                  {contract.facilitySignedAt ? (
-                    <span className="text-green-600">✓ {formatDate(contract.facilitySignedAt)}</span>
-                  ) : (
-                    <span className="text-gray-500">未署名</span>
-                  )}
-                </p>
-              </div>
-              {contract.signedAt && (
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600">契約締結日</p>
-                  <p className="font-medium text-green-600">✓ {formatDate(contract.signedAt)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Termination Info */}
-          {contract.status === 'terminated' && contract.terminatedAt && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-red-900 mb-4">終了情報</h2>
-              <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-red-700">終了日</p>
-                  <p className="font-medium text-red-900">{formatDate(contract.terminatedAt)}</p>
-                </div>
-                {contract.terminationReason && (
-                  <div>
-                    <p className="text-sm text-red-700 mb-2">終了理由</p>
-                    <p className="text-red-900">{contract.terminationReason}</p>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">納品条件</h3>
+                  <div className="text-sm text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded">
+                    {contract.deliveryTerms}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Document */}
-          {contract.documentUrl && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">契約書類</h2>
-              <a
-                href={contract.documentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                契約書をダウンロード
-              </a>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-4 justify-end">
-            <button
-              onClick={() => router.push('/dashboard/contracts')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+        {/* Document */}
+        {contract.documentUrl && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">契約書類</h2>
+            <a
+              href={contract.documentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
-              一覧に戻る
-            </button>
-            {contract.status === 'draft' && (user.role === 'manufacturer' || user.role === 'admin') && (
-              <button
-                onClick={() => alert('編集機能は近日実装予定です')}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-              >
-                編集
-              </button>
-            )}
+              <svg className="mr-2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              契約書をダウンロード
+            </a>
+          </div>
+        )}
+
+        {/* Metadata */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <div className="text-xs text-gray-500 space-y-1">
+            <p>作成日: {formatDate(contract.createdAt)}</p>
+            <p>最終更新: {formatDate(contract.updatedAt)}</p>
           </div>
         </div>
       </div>

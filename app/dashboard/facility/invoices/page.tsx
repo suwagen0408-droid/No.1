@@ -1,23 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import DashboardLayout from '@/app/components/DashboardLayout';
-
-interface InvoiceItem {
-  id: string;
-  itemType: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  amount: number;
-  campaign?: {
-    name: string;
-    manufacturer: {
-      companyName: string;
-    };
-  };
-}
 
 interface Invoice {
   id: string;
@@ -25,127 +10,93 @@ interface Invoice {
   billingPeriodStart: string;
   billingPeriodEnd: string;
   subtotal: number;
-  shippingFee: number;
   tax: number;
   total: number;
+  currency: string;
   status: string;
-  issuedAt: string;
-  dueDate: string;
+  issuedAt: string | null;
+  dueDate: string | null;
   paidAt: string | null;
-  createdAt: string;
-  items: InvoiceItem[];
+  paymentStatus: string;
 }
 
 export default function FacilityInvoicesPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [filter, setFilter] = useState<string>('all'); // all, pending, paid, overdue
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      router.push('/login');
-      return;
-    }
-    const userData = JSON.parse(userStr);
-    setUser(userData);
-  }, [router]);
+    fetchInvoices();
+  }, [filter]);
 
-  useEffect(() => {
-    if (user) {
-      loadInvoices();
-    }
-  }, [user]);
-
-  const loadInvoices = async () => {
-    if (!user) return;
-    
+  const fetchInvoices = async () => {
     try {
-      const response = await fetch('/api/facility/invoices', {
-        headers: {
-          'x-user-id': user.id,
-        },
-      });
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (filter !== 'all') {
+        params.append('status', filter);
+      }
       
+      const response = await fetch(`/api/facility/invoices?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setInvoices(data.invoices || []);
       }
     } catch (error) {
-      console.error('Failed to load invoices:', error);
+      console.error('Failed to fetch invoices:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; className: string }> = {
-      draft: { label: '下書き', className: 'bg-gray-100 text-gray-800' },
-      issued: { label: '発行済み', className: 'bg-blue-100 text-blue-800' },
-      sent: { label: '送信済み', className: 'bg-purple-100 text-purple-800' },
-      paid: { label: '支払済み', className: 'bg-green-100 text-green-800' },
-      overdue: { label: '期限切れ', className: 'bg-red-100 text-red-800' },
-      cancelled: { label: 'キャンセル', className: 'bg-gray-100 text-gray-800' },
+    const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+      draft: { bg: 'bg-gray-100', text: 'text-gray-800', label: '下書き' },
+      issued: { bg: 'bg-blue-100', text: 'text-blue-800', label: '発行済み' },
+      paid: { bg: 'bg-green-100', text: 'text-green-800', label: '支払済み' },
+      overdue: { bg: 'bg-red-100', text: 'text-red-800', label: '期限超過' },
+      cancelled: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'キャンセル' },
     };
 
-    const statusInfo = statusMap[status] || statusMap.draft;
+    const config = statusConfig[status] || statusConfig.draft;
     return (
-      <span className={`px-2 py-1 text-xs font-semibold rounded ${statusInfo.className}`}>
-        {statusInfo.label}
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
+        {config.label}
       </span>
     );
   };
 
-  const formatCurrency = (amount: number) => {
-    return `¥${amount.toLocaleString()}`;
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ja-JP');
+  const formatCurrency = (amount: number, currency: string = 'JPY') => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
   };
 
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'bank_transfer' | null>(null);
-  const [paymentProof, setPaymentProof] = useState<string>('');
-  const [processingPayment, setProcessingPayment] = useState(false);
-
-  const handleDownloadPDF = async (invoiceId: string, invoiceNumber: string) => {
+  const downloadPDF = async (invoiceId: string) => {
     try {
-      const response = await fetch(`/api/facility/invoices/${invoiceId}/pdf`, {
-        headers: {
-          'x-user-id': user.id,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('PDF生成に失敗しました');
-      }
-
-      // Get the HTML content
-      const htmlContent = await response.text();
-
-      // Create a blob and open in new window for printing
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      
-      // Open in new window
-      const printWindow = window.open(url, '_blank');
-      
-      if (printWindow) {
-        // Clean up the URL after window opens
-        printWindow.addEventListener('load', () => {
-          URL.revokeObjectURL(url);
-        });
+      const response = await fetch(`/api/facility/invoices/${invoiceId}/pdf`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `invoice-${invoiceId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       } else {
-        // Fallback: download as HTML file
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${invoiceNumber}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        alert('PDFのダウンロードに失敗しました');
       }
     } catch (error) {
       console.error('Failed to download PDF:', error);
@@ -153,326 +104,138 @@ export default function FacilityInvoicesPage() {
     }
   };
 
-  const handlePayment = async (invoiceId: string) => {
-    if (!paymentMethod) {
-      alert('支払い方法を選択してください');
-      return;
-    }
-
-    if (paymentMethod === 'bank_transfer' && !paymentProof) {
-      alert('振込証明書のURLを入力してください');
-      return;
-    }
-
-    setProcessingPayment(true);
-
-    try {
-      const response = await fetch(`/api/facility/invoices/${invoiceId}/payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user.id,
-        },
-        body: JSON.stringify({
-          paymentMethod,
-          proofUrl: paymentMethod === 'bank_transfer' ? paymentProof : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(data.message);
-        setSelectedInvoice(null);
-        setPaymentMethod(null);
-        setPaymentProof('');
-        loadInvoices(); // Reload to update status
-      } else {
-        alert(data.error || '支払い処理に失敗しました');
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('支払い処理に失敗しました');
-    } finally {
-      setProcessingPayment(false);
-    }
-  };
-
-  if (!user) {
-    return <div className="p-8">Loading...</div>;
-  }
-
-  if (loading) {
-    return (
-      <DashboardLayout user={user}>
-        <div className="p-8">
-          <div className="text-center">読み込み中...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
-    <DashboardLayout user={user}>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">請求書管理</h1>
-          <p className="text-gray-600">月次請求書の確認と支払い状況を管理</p>
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">請求書管理</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              施設への請求書を確認・支払いできます
+            </p>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            {[
+              { id: 'all', label: 'すべて' },
+              { id: 'issued', label: '未払い' },
+              { id: 'paid', label: '支払済み' },
+              { id: 'overdue', label: '期限超過' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                  filter === tab.id
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </div>
 
         {/* Invoices List */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {invoices.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              請求書がありません
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      請求書番号
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      請求期間
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      金額
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      支払期限
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ステータス
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      アクション
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {formatDate(invoice.billingPeriodStart)} - {formatDate(invoice.billingPeriodEnd)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">{formatCurrency(invoice.total)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatDate(invoice.dueDate)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(invoice.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => setSelectedInvoice(invoice)}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          詳細
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Invoice Detail Modal */}
-        {selectedInvoice && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">{selectedInvoice.invoiceNumber}</h2>
-                    <p className="text-blue-100 text-sm">請求書詳細</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedInvoice(null)}
-                    className="text-white hover:text-gray-200"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="p-6">
-                {/* Invoice Info */}
-                <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b">
-                  <div>
-                    <p className="text-sm text-gray-600">請求期間</p>
-                    <p className="font-medium">
-                      {formatDate(selectedInvoice.billingPeriodStart)} - {formatDate(selectedInvoice.billingPeriodEnd)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">支払期限</p>
-                    <p className="font-medium">{formatDate(selectedInvoice.dueDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">発行日</p>
-                    <p className="font-medium">{formatDate(selectedInvoice.issuedAt)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">ステータス</p>
-                    <div className="mt-1">{getStatusBadge(selectedInvoice.status)}</div>
-                  </div>
-                </div>
-
-                {/* Invoice Items */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">明細</h3>
-                  <div className="space-y-2">
-                    {selectedInvoice.items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-start py-2 border-b">
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{item.description}</p>
-                          {item.campaign && (
-                            <p className="text-sm text-gray-600">
-                              {item.campaign.manufacturer.companyName}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right ml-4">
-                          <p className="font-medium">{formatCurrency(item.amount)}</p>
-                          <p className="text-xs text-gray-600">
-                            {item.quantity} × {formatCurrency(item.unitPrice)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Totals */}
-                <div className="space-y-2 mb-6">
-                  <div className="flex justify-between text-gray-700">
-                    <span>小計</span>
-                    <span>{formatCurrency(selectedInvoice.subtotal)}</span>
-                  </div>
-                  {selectedInvoice.shippingFee > 0 && (
-                    <div className="flex justify-between text-gray-700">
-                      <span>配送料</span>
-                      <span>{formatCurrency(selectedInvoice.shippingFee)}</span>
-                    </div>
-                  )}
-                  {selectedInvoice.tax > 0 && (
-                    <div className="flex justify-between text-gray-700">
-                      <span>消費税</span>
-                      <span>{formatCurrency(selectedInvoice.tax)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t-2">
-                    <span>合計金額</span>
-                    <span>{formatCurrency(selectedInvoice.total)}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleDownloadPDF(selectedInvoice.id, selectedInvoice.invoiceNumber)}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                    >
-                      📄 PDFダウンロード
-                    </button>
-                  </div>
-
-                  {selectedInvoice.status === 'issued' || selectedInvoice.status === 'sent' ? (
-                    <div className="border-t pt-4">
-                      <h4 className="font-semibold text-gray-900 mb-3">支払い方法を選択</h4>
-                      
-                      <div className="space-y-3 mb-4">
-                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="stripe"
-                            checked={paymentMethod === 'stripe'}
-                            onChange={() => setPaymentMethod('stripe')}
-                            className="mr-3"
-                          />
-                          <div>
-                            <div className="font-medium">💳 クレジットカード決済（Stripe）</div>
-                            <div className="text-xs text-gray-500">即時決済</div>
-                          </div>
-                        </label>
-
-                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="bank_transfer"
-                            checked={paymentMethod === 'bank_transfer'}
-                            onChange={() => setPaymentMethod('bank_transfer')}
-                            className="mr-3"
-                          />
-                          <div>
-                            <div className="font-medium">🏦 銀行振込</div>
-                            <div className="text-xs text-gray-500">振込証明書の提出が必要です</div>
-                          </div>
-                        </label>
-                      </div>
-
-                      {paymentMethod === 'bank_transfer' && (
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            振込証明書URL
-                          </label>
-                          <input
-                            type="url"
-                            value={paymentProof}
-                            onChange={(e) => setPaymentProof(e.target.value)}
-                            placeholder="https://example.com/proof.pdf"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            振込完了後、証明書をアップロードしてURLを入力してください
-                          </p>
-                        </div>
-                      )}
-
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p className="mt-2 text-sm text-gray-500">読み込み中...</p>
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">請求書がありません</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              まだ請求書が発行されていません
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    請求書番号
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    請求期間
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    金額
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ステータス
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    発行日
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    支払期限
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    アクション
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {invoices.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {invoice.invoiceNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(invoice.billingPeriodStart)} - {formatDate(invoice.billingPeriodEnd)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                      {formatCurrency(invoice.total, invoice.currency)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(invoice.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(invoice.issuedAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(invoice.dueDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button
-                        onClick={() => handlePayment(selectedInvoice.id)}
-                        disabled={!paymentMethod || processingPayment}
-                        className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        onClick={() => downloadPDF(invoice.id)}
+                        className="text-indigo-600 hover:text-indigo-900"
                       >
-                        {processingPayment ? '処理中...' : '💳 支払いを実行'}
+                        PDF
                       </button>
-                    </div>
-                  ) : selectedInvoice.status === 'payment_pending' ? (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                      <p className="text-yellow-800 font-medium">⏳ 支払い確認待ち</p>
-                      <p className="text-xs text-yellow-700 mt-1">
-                        振込証明書を確認中です。しばらくお待ちください。
-                      </p>
-                    </div>
-                  ) : selectedInvoice.status === 'paid' ? (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                      <p className="text-green-800 font-medium">✅ 支払済み</p>
-                      <p className="text-xs text-green-700 mt-1">
-                        {selectedInvoice.paidAt && `支払日: ${formatDate(selectedInvoice.paidAt)}`}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
+                      {invoice.status === 'issued' && (
+                        <Link
+                          href={`/dashboard/facility/invoices/${invoice.id}/payment`}
+                          className="text-green-600 hover:text-green-900 ml-3"
+                        >
+                          支払う
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

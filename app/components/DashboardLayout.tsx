@@ -90,6 +90,12 @@ export default function DashboardLayout({ children, user: propUser }: DashboardL
                   在庫管理
                 </Link>
                 <Link
+                  href="/dashboard/manufacturer/reorders"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  追加発注管理
+                </Link>
+                <Link
                   href="/dashboard/manufacturer/invoices"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
@@ -147,6 +153,12 @@ export default function DashboardLayout({ children, user: propUser }: DashboardL
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   在庫管理
+                </Link>
+                <Link
+                  href="/dashboard/facility/reorders"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  追加発注リクエスト
                 </Link>
                 <Link
                   href="/dashboard/facility/payments"

@@ -41,12 +41,7 @@ export async function POST(
     const placement = await prisma.facilityProductPlacement.findUnique({
       where: { id },
       include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
+        product: true,
         facilityCampaign: {
           include: {
             facility: {
@@ -55,10 +50,6 @@ export async function POST(
               }
             },
             campaign: {
-              select: {
-                name: true,
-                manufacturerId: true,
-              },
               include: {
                 manufacturer: {
                   include: {

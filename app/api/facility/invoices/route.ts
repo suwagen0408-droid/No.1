@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         facilityId: facility.id,
       },
       include: {
-        items: {
+        facilityInvoiceItems: {
           include: {
             campaign: {
               select: {

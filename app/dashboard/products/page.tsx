@@ -464,10 +464,11 @@ export default function ProductsPage() {
                       type="number"
                       required
                       min="0"
-                      value={formData.costPrice}
-                      onChange={(e) =>
-                        setFormData({ ...formData, costPrice: parseFloat(e.target.value) })
-                      }
+                      value={formData.costPrice || ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        setFormData({ ...formData, costPrice: isNaN(value) ? 0 : value });
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -479,10 +480,11 @@ export default function ProductsPage() {
                       type="number"
                       required
                       min="0"
-                      value={formData.retailPrice}
-                      onChange={(e) =>
-                        setFormData({ ...formData, retailPrice: parseFloat(e.target.value) })
-                      }
+                      value={formData.retailPrice || ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        setFormData({ ...formData, retailPrice: isNaN(value) ? 0 : value });
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>

@@ -170,8 +170,31 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      // Password change API would go here
-      alert('パスワード変更機能は実装予定です');
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('パスワードを変更しました');
+        // Clear form
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      } else {
+        alert(data.error || 'パスワードの変更に失敗しました');
+      }
     } catch (error) {
       console.error('Error changing password:', error);
       alert('パスワードの変更に失敗しました');

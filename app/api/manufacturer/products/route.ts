@@ -36,7 +36,7 @@ const productSchema = z.object({
   currency: z.string().default('JPY'),
   ecUrl: z.string().url('Valid EC URL is required'),
   ecPlatform: z.string().optional(),
-  mainImageUrl: z.string().url().optional(),
+  mainImageUrl: z.string().optional(), // Can be absolute URL or relative path
 });
 
 // GET /api/manufacturer/products - Get all products for logged-in manufacturer
@@ -78,7 +78,13 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            campaignProducts: true,
+            campaignProducts: {
+              where: {
+                campaign: {
+                  deletedAt: null,
+                },
+              },
+            },
             qrScanEvents: true,
             purchaseEvents: true,
           },
@@ -163,6 +169,10 @@ export async function POST(request: NextRequest) {
         newValues: JSON.stringify(validatedData),
       },
     });
+
+    // Notify admins about new product
+    const { notifyAdminsNewProduct } = await import('@/lib/notifications');
+    await notifyAdminsNewProduct(product.name, manufacturer.companyName);
 
     return NextResponse.json(
       { 

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UI Test Links</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px;
+        }
+        .link-box {
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .link-box h3 { margin-top: 0; }
+        a { 
+            display: inline-block;
+            background: #0070f3;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+        a:hover { background: #0051cc; }
+    </style>
+</head>
+<body>
+    <h1>🎯 新しく実装したUIページ</h1>
+    
+    <div class="link-box">
+        <h3>⭐ 施設評価システム</h3>
+        <p>メーカーが施設をレビューできます</p>
+        <a href="/dashboard/manufacturer/reviews" target="_blank">
+            レビュー一覧ページを開く
+        </a>
+    </div>
+
+    <div class="link-box">
+        <h3>📧 メッセージシステム</h3>
+        <p>パートナー間でメッセージを送受信できます</p>
+        <a href="/dashboard/messages" target="_blank">
+            メッセージ受信箱を開く
+        </a>
+        <a href="/dashboard/messages/compose" target="_blank">
+            新規メッセージ作成
+        </a>
+    </div>
+
+    <div class="link-box">
+        <h3>📝 注意事項</h3>
+        <ul>
+            <li>ページは正しく作成されています</li>
+            <li>APIエンドポイントも実装済みです</li>
+            <li>ログインしていない場合、データは表示されません（401エラー）</li>
+            <li>ログイン後、すべての機能が使用可能になります</li>
+        </ul>
+    </div>
+
+    <div class="link-box">
+        <h3>🔗 実装済みファイル</h3>
+        <ul>
+            <li><code>app/dashboard/manufacturer/reviews/page.tsx</code></li>
+            <li><code>app/dashboard/manufacturer/reviews/facility/[id]/page.tsx</code></li>
+            <li><code>app/dashboard/messages/page.tsx</code></li>
+            <li><code>app/dashboard/messages/compose/page.tsx</code></li>
+            <li><code>app/api/manufacturer/facility-reviews/route.ts</code></li>
+            <li><code>app/api/facilities/[id]/rating/route.ts</code></li>
+            <li><code>app/api/messages/route.ts</code></li>
+        </ul>
+    </div>
+</body>
+</html>

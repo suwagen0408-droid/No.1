@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { notifyAccountApproved, notifyAccountRejected } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,9 @@ export async function GET(request: NextRequest) {
       },
       include: {
         manufacturer: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             approver: {
               select: {
@@ -47,6 +51,9 @@ export async function GET(request: NextRequest) {
           },
         },
         facility: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             approver: {
               select: {
@@ -156,19 +163,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create notification
-    await prisma.notification.create({
-      data: {
-        userId: userId,
-        type: action === 'approve' ? 'account_approved' : 'account_rejected',
-        title: action === 'approve' ? 'アカウント承認' : 'アカウント却下',
-        message:
-          action === 'approve'
-            ? 'アカウントが承認されました。ログインして利用を開始できます。'
-            : `アカウントが却下されました。理由: ${rejectionReason || '未指定'}`,
-        relatedResourceType: 'user',
-        relatedResourceId: userId,
-      },
-    });
+    if (action === 'approve') {
+      await notifyAccountApproved(userId, user.role);
+    } else {
+      await notifyAccountRejected(userId, user.role, rejectionReason);
+    }
 
     // Create audit log
     await prisma.auditLog.create({

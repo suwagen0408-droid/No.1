@@ -53,9 +53,14 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        _count: {
+        qrScanEvents: {
           select: {
-            qrScanEvents: true,
+            id: true,
+            clickEvents: {
+              select: {
+                id: true,
+              },
+            },
           },
         },
       },
@@ -64,7 +69,34 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ qrCodes });
+    // Format the response with computed counts and proper field names
+    const formattedQrCodes = qrCodes.map((qrCode) => {
+      // Count click events across all scan events
+      const clickEventsCount = qrCode.qrScanEvents.reduce(
+        (total, scanEvent) => total + scanEvent.clickEvents.length,
+        0
+      );
+      
+      // For now, purchaseEvents are not linked to QR codes in the schema
+      // So we return 0, but this should be fixed in the schema later
+      const purchaseEventsCount = 0;
+      
+      return {
+        id: qrCode.id,
+        url: qrCode.url, // Use 'url' field instead of 'qrCodeUrl'
+        codeString: qrCode.codeString,
+        createdAt: qrCode.createdAt,
+        expiresAt: qrCode.expiresAt,
+        facilityProductPlacement: qrCode.facilityProductPlacement,
+        _count: {
+          qrScanEvents: qrCode.qrScanEvents.length,
+          clickEvents: clickEventsCount,
+          purchaseEvents: purchaseEventsCount,
+        },
+      };
+    });
+    
+    return NextResponse.json({ qrCodes: formattedQrCodes });
   } catch (error) {
     console.error('Error fetching QR codes:', error);
     return NextResponse.json(
@@ -119,14 +151,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique code string
-    const codeString = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate unique code string (use UUID format for consistency)
+    const codeString = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // In production, you would generate actual QR code image here
-    // For now, we'll just store a URL that points to the landing page
-    const qrCodeUrl = `https://essc-platform.com/product/${codeString}`;
+    // Get the base URL from the request
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
+    
+    // Create URL that points to the product landing page with reviews
+    const qrCodeUrl = `${baseUrl}/p/${placement.productId}`;
 
-    // Create QR code with required schema fields
+    // Create QR code pointing directly to the product landing page
     const qrCode = await prisma.qrCode.create({
       data: {
         codeString,
@@ -155,7 +191,7 @@ export async function POST(request: NextRequest) {
       {
         qrCode,
         message: 'QR code generated successfully',
-        // In production, return actual QR code image URL
+        // Generate QR code image using the product landing page URL
         qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCodeUrl)}`,
       },
       { status: 201 }

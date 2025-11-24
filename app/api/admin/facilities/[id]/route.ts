@@ -142,11 +142,29 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Soft delete
-    await prisma.facility.update({
+    // Get facility with userId
+    const facility = await prisma.facility.findUnique({
       where: { id: id },
-      data: { deletedAt: new Date() },
+      select: { userId: true },
     });
+
+    if (!facility) {
+      return NextResponse.json({ error: 'Facility not found' }, { status: 404 });
+    }
+
+    const deletionDate = new Date();
+
+    // Soft delete both facility and user
+    await prisma.$transaction([
+      prisma.facility.update({
+        where: { id: id },
+        data: { deletedAt: deletionDate },
+      }),
+      prisma.user.update({
+        where: { id: facility.userId },
+        data: { deletedAt: deletionDate },
+      }),
+    ]);
 
     // Audit log
     await prisma.auditLog.create({

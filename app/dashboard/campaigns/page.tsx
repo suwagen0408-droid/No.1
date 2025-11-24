@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface Campaign {
   id: string;
@@ -165,10 +166,9 @@ export default function CampaignsPage() {
   const isFacility = user.role === 'facility';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <DashboardLayout user={user}>
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b px-6 py-6">
           <h1 className="text-3xl font-bold text-gray-900">
             {isFacility ? 'キャンペーン一覧' : 'マイキャンペーン'}
           </h1>
@@ -178,10 +178,8 @@ export default function CampaignsPage() {
               : 'あなたが作成したキャンペーンの一覧'}
           </p>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="px-6 py-8">
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -359,6 +357,7 @@ export default function CampaignsPage() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Application Modal */}
@@ -483,6 +482,6 @@ export default function CampaignsPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

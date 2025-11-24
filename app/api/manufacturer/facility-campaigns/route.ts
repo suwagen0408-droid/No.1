@@ -146,10 +146,92 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Determine status based on payment model
+      let newStatus: 'approved' | 'pending_payment' = 'approved';
+      const campaign = facilityCampaign.campaign;
+      
+      // Phase 1: Handle payment models
+      if (campaign.costModel === 'free' || campaign.paymentTiming === 'none') {
+        // Free campaign - no payment required
+        newStatus = 'approved';
+      } else if (campaign.paymentTiming === 'on_approval') {
+        // Paid sampling - requires immediate payment
+        newStatus = 'pending_payment';
+        
+        // Create payment record and invoice for facility
+        if (campaign.unitPrice) {
+          const amount = campaign.unitPrice * approvedUnits;
+          const shippingFee = campaign.shippingCostCoveredBy === 'facility' ? (campaign.shippingFee || 0) : 0;
+          const totalAmount = amount + shippingFee;
+          
+          await prisma.facilityPayment.create({
+            data: {
+              facilityId: facilityCampaign.facilityId,
+              facilityCampaignId: facilityCampaign.id,
+              amount,
+              shippingFee,
+              totalAmount,
+              paymentMethod: 'stripe', // Default, can be changed by facility
+              paymentStatus: 'pending',
+            },
+          });
+
+          // Create facility invoice for immediate payment
+          // Generate unique invoice number using timestamp to avoid race conditions
+          const now = new Date();
+          const timestamp = now.getTime().toString().slice(-8); // Last 8 digits of timestamp
+          const invoiceNumber = `FINV-${now.getFullYear()}-${timestamp}`;
+          
+          const subtotal = totalAmount;
+          const tax = Math.floor(subtotal * 0.1);
+          const total = subtotal + tax;
+
+          await prisma.facilityInvoice.create({
+            data: {
+              facilityId: facilityCampaign.facilityId,
+              invoiceNumber,
+              billingPeriodStart: new Date(),
+              billingPeriodEnd: new Date(),
+              subtotal,
+              tax,
+              total,
+              currency: 'JPY',
+              status: 'issued',
+              issuedAt: new Date(),
+              dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+              paymentStatus: 'pending',
+              notes: `キャンペーン承認: ${campaign.name} (${approvedUnits}個)`,
+              facilityInvoiceItems: {
+                create: [
+                  {
+                    itemType: 'campaign',
+                    description: `${campaign.name} - 商品配置`,
+                    quantity: approvedUnits,
+                    unitPrice: campaign.unitPrice,
+                    amount,
+                  },
+                  ...(shippingFee > 0 ? [{
+                    itemType: 'shipping',
+                    description: '配送料',
+                    quantity: 1,
+                    unitPrice: shippingFee,
+                    amount: shippingFee,
+                  }] : []),
+                ],
+              },
+            },
+          });
+        }
+      } else if (campaign.paymentTiming === 'monthly_invoice') {
+        // Monthly invoice - approve now, bill later
+        newStatus = 'approved';
+        // Note: Invoice will be generated at end of month by batch process
+      }
+
       await prisma.facilityCampaign.update({
         where: { id: validatedData.facilityCampaignId },
         data: {
-          status: 'approved',
+          status: newStatus,
           approvedUnits,
           approvedAt: new Date(),
           approvedBy: userId,

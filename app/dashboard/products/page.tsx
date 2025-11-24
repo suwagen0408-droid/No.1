@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface Product {
   id: string;
@@ -64,6 +65,8 @@ export default function ProductsPage() {
     ecUrl: '',
     shortDescription: '',
   });
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -165,15 +168,72 @@ export default function ProductsPage() {
     }
   };
 
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev: any) => ({ ...prev, mainImageUrl: data.imageUrl }));
+        alert('画像をアップロードしました');
+      } else {
+        const error = await response.json();
+        alert(`エラー: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('画像のアップロードに失敗しました');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageUpload(e.target.files[0]);
+    }
+  };
+
   if (!user) {
     return <div className="p-8">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <DashboardLayout user={user}>
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">商品管理</h1>
@@ -187,10 +247,8 @@ export default function ProductsPage() {
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="px-6 py-8">
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -406,10 +464,11 @@ export default function ProductsPage() {
                       type="number"
                       required
                       min="0"
-                      value={formData.costPrice}
-                      onChange={(e) =>
-                        setFormData({ ...formData, costPrice: parseFloat(e.target.value) })
-                      }
+                      value={formData.costPrice || ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        setFormData({ ...formData, costPrice: isNaN(value) ? 0 : value });
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -421,10 +480,11 @@ export default function ProductsPage() {
                       type="number"
                       required
                       min="0"
-                      value={formData.retailPrice}
-                      onChange={(e) =>
-                        setFormData({ ...formData, retailPrice: parseFloat(e.target.value) })
-                      }
+                      value={formData.retailPrice || ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        setFormData({ ...formData, retailPrice: isNaN(value) ? 0 : value });
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -445,20 +505,103 @@ export default function ProductsPage() {
                   />
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    商品画像URL
+                    商品画像
                   </label>
-                  <input
-                    type="url"
-                    value={formData.mainImageUrl || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, mainImageUrl: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                      dragActive
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    {formData.mainImageUrl ? (
+                      <div className="space-y-3">
+                        <img
+                          src={formData.mainImageUrl}
+                          alt="商品画像プレビュー"
+                          className="mx-auto h-32 w-32 object-cover rounded-lg"
+                        />
+                        <div className="text-sm text-gray-600">
+                          画像をドラッグ&ドロップして変更
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, mainImageUrl: '' })}
+                          className="text-sm text-red-600 hover:text-red-700"
+                        >
+                          画像を削除
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="mt-4">
+                          <label
+                            htmlFor="file-upload"
+                            className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            ファイルを選択
+                          </label>
+                          <input
+                            id="file-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileInput}
+                            className="sr-only"
+                          />
+                          <span className="text-gray-600"> または画像をドラッグ&ドロップ</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          PNG, JPG, GIF 最大5MB
+                        </p>
+                      </>
+                    )}
+                    {uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg">
+                        <div className="text-center">
+                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <p className="mt-2 text-sm text-gray-600">アップロード中...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Or URL Input */}
+                  <div className="mt-3">
+                    <label className="block text-xs text-gray-500 mb-1">
+                      または画像URLを直接入力:
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.mainImageUrl || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, mainImageUrl: e.target.value })
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
                 </div>
 
                 {/* Actions */}
@@ -482,6 +625,7 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

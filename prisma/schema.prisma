@@ -48,6 +48,7 @@ model User {
   passwordResetTokens   PasswordResetToken[]
   stockLogsCreated      StockLog[]
   notificationsReceived Notification[]
+  notificationPreference NotificationPreference?
   approvedManufacturers Manufacturer[]       @relation("ApprovedBy")
   approvedFacilities    Facility[]           @relation("ApprovedBy")
   approvedProducts      Product[]            @relation("ApprovedBy")
@@ -55,6 +56,8 @@ model User {
   approvedReviews       ProductReview[]      @relation("ApprovedBy")
   approvedFacilityCampaigns FacilityCampaign[] @relation("ApprovedBy")
   auditLogs             AuditLog[]
+  approvedReorders      ReorderRequest[]     @relation("ReorderApprover")
+  cancelledReorders     ReorderRequest[]     @relation("ReorderCanceller")
 
   @@map("users")
 }
@@ -100,9 +103,11 @@ model Manufacturer {
   
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   approver     User?      @relation("ApprovedBy", fields: [approvedBy], references: [id])
-  products     Product[]
-  campaigns    Campaign[]
-  invoices     Invoice[]
+  products        Product[]
+  campaigns       Campaign[]
+  invoices        Invoice[]
+  contracts       Contract[]
+  reorderRequests ReorderRequest[]
   
   @@map("manufacturers")
 }
@@ -154,6 +159,9 @@ model Facility {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   approver          User?              @relation("ApprovedBy", fields: [approvedBy], references: [id])
   facilityCampaigns FacilityCampaign[]
+  facilityPayments  FacilityPayment[]
+  facilityInvoices  FacilityInvoice[]
+  contracts         Contract[]
   qrCodes           QrCode[]
   qrScanEvents      QrScanEvent[]
   clickEvents       ClickEvent[]
@@ -161,6 +169,7 @@ model Facility {
   productReviews    ProductReview[]
   productFeedback   ProductFeedback[]
   invoiceItems      InvoiceItem[]
+  reorderRequests   ReorderRequest[]
   
   @@map("facilities")
 }
@@ -244,6 +253,7 @@ model Product {
   purchaseEvents            PurchaseEvent[]
   productReviews            ProductReview[]
   productFeedback           ProductFeedback[]
+  reorderRequests           ReorderRequest[]
   
   @@map("products")
 }
@@ -266,9 +276,17 @@ model ProductImage {
 // ============================================
 
 enum CostModel {
-  free
-  cost_price
-  discounted
+  free              // 無料配布
+  paid_sampling     // 有料サンプリング（即時支払い）
+  invoice_later     // 後払い請求（月次まとめ）
+  cost_price        // 原価販売（後方互換性）
+  discounted        // 割引価格（後方互換性）
+}
+
+enum PaymentTiming {
+  none              // 支払い不要（free）
+  on_approval       // 承認時に即時支払い（paid_sampling）
+  monthly_invoice   // 月次請求（invoice_later）
 }
 
 enum ShippingCostCoveredBy {
@@ -305,6 +323,9 @@ model Campaign {
   minMonthlyGuests    Int? @map("min_monthly_guests")
   
   costModel            CostModel             @default(free) @map("cost_model")
+  paymentTiming        PaymentTiming         @default(none) @map("payment_timing")
+  unitPrice            Float?                @map("unit_price")          // 1ユニットあたりの価格
+  shippingFee          Float?                @map("shipping_fee")        // 配送料
   shippingCostCoveredBy ShippingCostCoveredBy @default(manufacturer) @map("shipping_cost_covered_by")
   
   status          CampaignStatus @default(draft)
@@ -316,15 +337,17 @@ model Campaign {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
   
-  manufacturer         Manufacturer         @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
-  approver             User?                @relation("ApprovedBy", fields: [approvedBy], references: [id])
-  campaignProducts     CampaignProduct[]
-  facilityCampaigns    FacilityCampaign[]
-  qrCodes              QrCode[]
-  qrScanEvents         QrScanEvent[]
-  clickEvents          ClickEvent[]
-  purchaseEvents       PurchaseEvent[]
-  invoiceItems         InvoiceItem[]
+  manufacturer          Manufacturer          @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  approver              User?                 @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  campaignProducts      CampaignProduct[]
+  facilityCampaigns     FacilityCampaign[]
+  facilityInvoiceItems  FacilityInvoiceItem[]
+  qrCodes               QrCode[]
+  qrScanEvents          QrScanEvent[]
+  clickEvents           ClickEvent[]
+  purchaseEvents        PurchaseEvent[]
+  invoiceItems          InvoiceItem[]
+  reorderRequests       ReorderRequest[]
   
   @@map("campaigns")
 }
@@ -350,6 +373,7 @@ model CampaignProduct {
 
 enum FacilityCampaignStatus {
   pending
+  pending_payment  // 支払い待ち（有料サンプリング）
   approved
   rejected
   active
@@ -383,6 +407,8 @@ model FacilityCampaign {
   campaign                  Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   approver                  User?                      @relation("ApprovedBy", fields: [approvedBy], references: [id])
   facilityProductPlacements FacilityProductPlacement[]
+  facilityPayments          FacilityPayment[]
+  facilityInvoiceItems      FacilityInvoiceItem[]
   
   @@unique([facilityId, campaignId])
   @@map("facility_campaigns")
@@ -410,6 +436,7 @@ model FacilityProductPlacement {
   stockLogs        StockLog[]
   qrCodes          QrCode[]
   qrScanEvents     QrScanEvent[]
+  reorderRequests  ReorderRequest[]
   
   @@map("facility_product_placements")
 }
@@ -592,6 +619,22 @@ model Invoice {
   dueDate  DateTime?     @map("due_date")
   paidAt   DateTime?     @map("paid_at")
   
+  // Payment Information
+  paymentMethod String? @map("payment_method") // stripe, bank_transfer, null
+  paymentStatus String  @default("pending") @map("payment_status") // pending, processing, completed, failed, cancelled
+  
+  // Stripe Integration
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeCheckoutSessionId String? @unique @map("stripe_checkout_session_id")
+  stripeCustomerId String? @map("stripe_customer_id")
+  
+  // Bank Transfer Information
+  bankTransferProof String? @map("bank_transfer_proof") // File URL for payment proof
+  bankTransferDate  DateTime? @map("bank_transfer_date")
+  bankTransferNote  String? @map("bank_transfer_note")
+  verifiedBy String? @map("verified_by") // Admin user ID who verified payment
+  verifiedAt DateTime? @map("verified_at")
+  
   pdfUrl String? @map("pdf_url")
   
   createdAt DateTime @default(now()) @map("created_at")
@@ -599,6 +642,7 @@ model Invoice {
   
   manufacturer Manufacturer  @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
   invoiceItems InvoiceItem[]
+  payments Payment[]
   
   @@map("invoices")
 }
@@ -626,6 +670,141 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
+model Payment {
+  id        String   @id @default(uuid())
+  invoiceId String   @map("invoice_id")
+  
+  amount   Float
+  currency String @default("JPY")
+  
+  paymentMethod String @map("payment_method") // stripe, bank_transfer
+  paymentStatus String @map("payment_status") // pending, processing, completed, failed, refunded
+  
+  // Stripe specific
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeChargeId        String? @map("stripe_charge_id")
+  stripeRefundId        String? @map("stripe_refund_id")
+  
+  // Bank Transfer specific
+  transferProofUrl String? @map("transfer_proof_url")
+  transferDate     DateTime? @map("transfer_date")
+  transferNote     String? @map("transfer_note")
+  
+  // Metadata
+  metadata String? // JSON string for additional data
+  
+  processedAt DateTime? @map("processed_at")
+  failedReason String? @map("failed_reason")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
+}
+
+// ============================================
+// 施設側の支払い管理
+// ============================================
+
+model FacilityPayment {
+  id                 String   @id @default(uuid())
+  facilityId         String   @map("facility_id")
+  facilityCampaignId String   @map("facility_campaign_id")
+  
+  amount            Float
+  shippingFee       Float    @default(0) @map("shipping_fee")
+  totalAmount       Float    @map("total_amount")
+  currency          String   @default("JPY")
+  
+  paymentMethod     String   @map("payment_method") // stripe, bank_transfer
+  paymentStatus     String   @default("pending") @map("payment_status") // pending, processing, completed, failed, refunded
+  
+  // Stripe specific
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeChargeId        String? @map("stripe_charge_id")
+  
+  // Bank Transfer specific
+  transferProofUrl String?   @map("transfer_proof_url")
+  transferDate     DateTime? @map("transfer_date")
+  
+  paidAt      DateTime? @map("paid_at")
+  failedAt    DateTime? @map("failed_at")
+  failedReason String?  @map("failed_reason")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  facility         Facility         @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityCampaign FacilityCampaign @relation(fields: [facilityCampaignId], references: [id], onDelete: Cascade)
+  
+  @@map("facility_payments")
+}
+
+model FacilityInvoice {
+  id         String @id @default(uuid())
+  facilityId String @map("facility_id")
+  
+  invoiceNumber      String   @unique @map("invoice_number")
+  billingPeriodStart DateTime @map("billing_period_start")
+  billingPeriodEnd   DateTime @map("billing_period_end")
+  
+  subtotal Float
+  tax      Float @default(0)
+  total    Float
+  currency String  @default("JPY")
+  
+  status   String    @default("draft") // draft, issued, paid, overdue, cancelled
+  issuedAt DateTime? @map("issued_at")
+  dueDate  DateTime? @map("due_date")
+  paidAt   DateTime? @map("paid_at")
+  
+  // Payment Information
+  paymentMethod String? @map("payment_method")
+  paymentStatus String  @default("pending") @map("payment_status")
+  
+  // Stripe specific
+  stripeInvoiceId String? @unique @map("stripe_invoice_id")
+  
+  // Bank Transfer
+  transferProofUrl String?   @map("transfer_proof_url")
+  transferDate     DateTime? @map("transfer_date")
+  
+  notes String?
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  facility              Facility               @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityInvoiceItems  FacilityInvoiceItem[]
+  
+  @@map("facility_invoices")
+}
+
+model FacilityInvoiceItem {
+  id        String @id @default(uuid())
+  invoiceId String @map("invoice_id")
+  
+  itemType    String @map("item_type")
+  description String
+  
+  facilityCampaignId String? @map("facility_campaign_id")
+  campaignId         String? @map("campaign_id")
+  
+  quantity  Int   @default(1)
+  unitPrice Float @map("unit_price")
+  amount    Float
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  invoice          FacilityInvoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  facilityCampaign FacilityCampaign? @relation(fields: [facilityCampaignId], references: [id], onDelete: SetNull)
+  campaign         Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  
+  @@map("facility_invoice_items")
+}
+
 model Notification {
   id     String @id @default(uuid())
   userId String @map("user_id")
@@ -644,6 +823,103 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  
+  // Email notification settings
+  emailEnabled             Boolean @default(true) @map("email_enabled")
+  emailOnCampaignApproval  Boolean @default(true) @map("email_on_campaign_approval")
+  emailOnApplicationStatus Boolean @default(true) @map("email_on_application_status")
+  emailOnMessage           Boolean @default(true) @map("email_on_message")
+  emailOnReview            Boolean @default(true) @map("email_on_review")
+  emailOnPayment           Boolean @default(true) @map("email_on_payment")
+  
+  // Push notification settings (for future web push)
+  pushEnabled             Boolean @default(false) @map("push_enabled")
+  pushOnCampaignApproval  Boolean @default(false) @map("push_on_campaign_approval")
+  pushOnApplicationStatus Boolean @default(false) @map("push_on_application_status")
+  pushOnMessage           Boolean @default(false) @map("push_on_message")
+  pushOnReview            Boolean @default(false) @map("push_on_review")
+  pushOnPayment           Boolean @default(false) @map("push_on_payment")
+  
+  // Digest settings
+  dailyDigestEnabled  Boolean   @default(false) @map("daily_digest_enabled")
+  dailyDigestTime     String?   @map("daily_digest_time") // HH:MM format
+  weeklyDigestEnabled Boolean   @default(false) @map("weekly_digest_enabled")
+  weeklyDigestDay     Int?      @map("weekly_digest_day") // 0=Sunday, 6=Saturday
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notification_preferences")
+}
+
+// ============================================
+// 契約管理
+// ============================================
+
+enum ContractStatus {
+  draft
+  active
+  expired
+  terminated
+  renewed
+}
+
+model Contract {
+  id             String   @id @default(uuid())
+  manufacturerId String   @map("manufacturer_id")
+  facilityId     String   @map("facility_id")
+  
+  contractNumber String   @unique @map("contract_number")
+  title          String
+  description    String?
+  
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  
+  renewalDate    DateTime? @map("renewal_date")
+  autoRenew      Boolean   @default(false) @map("auto_renew")
+  renewalPeriod  Int?      @map("renewal_period") // months
+  
+  status ContractStatus @default(draft)
+  
+  // Contract terms
+  terms          String? // JSON string for detailed terms
+  paymentTerms   String? @map("payment_terms")
+  deliveryTerms  String? @map("delivery_terms")
+  
+  // Documents
+  documentUrl String? @map("document_url") // PDF URL
+  
+  // Financial
+  monthlyFee  Float?  @map("monthly_fee")
+  setupFee    Float?  @map("setup_fee")
+  currency    String  @default("JPY")
+  
+  // Signing
+  signedAt          DateTime? @map("signed_at")
+  manufacturerSignedAt DateTime? @map("manufacturer_signed_at")
+  facilitySignedAt     DateTime? @map("facility_signed_at")
+  
+  // Termination
+  terminatedAt     DateTime? @map("terminated_at")
+  terminatedBy     String?   @map("terminated_by")
+  terminationReason String?  @map("termination_reason")
+  
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  
+  @@map("contracts")
 }
 
 model AuditLog {
@@ -668,4 +944,68 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   
   @@map("audit_logs")
+}
+
+// ============================================
+// 追加発注管理
+// ============================================
+
+enum ReorderRequestStatus {
+  pending      // 発注待ち
+  approved     // メーカー承認済み
+  rejected     // メーカー却下
+  shipped      // 発送済み
+  delivered    // 配達完了
+  cancelled    // キャンセル
+}
+
+model ReorderRequest {
+  id                         String   @id @default(uuid())
+  facilityId                 String   @map("facility_id")
+  facilityProductPlacementId String   @map("facility_product_placement_id")
+  productId                  String   @map("product_id")
+  campaignId                 String   @map("campaign_id")
+  manufacturerId             String   @map("manufacturer_id")
+  
+  requestedUnits Int    @map("requested_units")
+  reason         String? // 発注理由
+  urgency        String  @default("normal") // normal, high, emergency
+  
+  status             ReorderRequestStatus @default(pending)
+  
+  approvedUnits      Int?      @map("approved_units")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+  
+  rejectionReason    String?   @map("rejection_reason")
+  
+  shippedAt          DateTime? @map("shipped_at")
+  trackingNumber     String?   @map("tracking_number")
+  estimatedDelivery  DateTime? @map("estimated_delivery")
+  
+  deliveredAt        DateTime? @map("delivered_at")
+  
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelledBy        String?   @map("cancelled_by")
+  cancellationReason String?   @map("cancellation_reason")
+  
+  // コスト情報
+  unitCost       Float?  @map("unit_cost")
+  shippingCost   Float?  @map("shipping_cost")
+  totalCost      Float?  @map("total_cost")
+  
+  notes          String?
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  facility                 Facility                 @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityProductPlacement FacilityProductPlacement @relation(fields: [facilityProductPlacementId], references: [id], onDelete: Cascade)
+  product                  Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  campaign                 Campaign                 @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  manufacturer             Manufacturer             @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  approver                 User?                    @relation("ReorderApprover", fields: [approvedBy], references: [id])
+  canceller                User?                    @relation("ReorderCanceller", fields: [cancelledBy], references: [id])
+  
+  @@map("reorder_requests")
 }

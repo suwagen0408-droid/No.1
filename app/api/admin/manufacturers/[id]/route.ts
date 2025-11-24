@@ -130,11 +130,29 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Soft delete
-    await prisma.manufacturer.update({
+    // Get manufacturer with userId
+    const manufacturer = await prisma.manufacturer.findUnique({
       where: { id: id },
-      data: { deletedAt: new Date() },
+      select: { userId: true },
     });
+
+    if (!manufacturer) {
+      return NextResponse.json({ error: 'Manufacturer not found' }, { status: 404 });
+    }
+
+    const deletionDate = new Date();
+
+    // Soft delete both manufacturer and user
+    await prisma.$transaction([
+      prisma.manufacturer.update({
+        where: { id: id },
+        data: { deletedAt: deletionDate },
+      }),
+      prisma.user.update({
+        where: { id: manufacturer.userId },
+        data: { deletedAt: deletionDate },
+      }),
+    ]);
 
     // Audit log
     await prisma.auditLog.create({

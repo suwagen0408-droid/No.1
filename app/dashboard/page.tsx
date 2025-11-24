@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DashboardLayout from '../components/DashboardLayout';
+import { useAuth } from '@/lib/auth-context';
 
 interface User {
   id: string;
@@ -14,39 +16,71 @@ interface User {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const [stats, setStats] = useState({
+    totalManufacturers: 0,
+    totalFacilities: 0,
+    activeCampaigns: 0,
+    pendingApprovals: 0,
+    totalProducts: 0,
+    totalScans: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) return;
+
     // Check if user is logged in
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
+    if (!user) {
       router.push('/login');
       return;
     }
-
-    const userData = JSON.parse(userStr);
     
     // Redirect manufacturer to their dedicated dashboard
-    if (userData.role === 'manufacturer') {
+    if (user.role === 'manufacturer') {
       router.push('/dashboard/manufacturer');
       return;
     }
     
     // Redirect facility to their dedicated dashboard
-    if (userData.role === 'facility') {
+    if (user.role === 'facility') {
       router.push('/dashboard/facility');
       return;
     }
 
-    setUser(userData);
-  }, [router]);
+    loadStats(user);
+  }, [user, authLoading, router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/');
+  const loadStats = async (userData: User | null) => {
+    if (!userData) return;
+    
+    try {
+      console.log('Loading stats for role:', userData.role);
+      if (userData.role === 'admin') {
+        console.log('Fetching admin dashboard stats...');
+        const response = await fetch('/api/admin/dashboard', {
+          headers: { 'x-user-id': userData.id },
+        });
+        
+        console.log('Response status:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Dashboard stats:', data.stats);
+          setStats(data.stats);
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to fetch stats:', errorData);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!user) {
+  if (authLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-gray-600">読み込み中...</div>
@@ -55,113 +89,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="border-b bg-white">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-600"></div>
-            <span className="text-xl font-bold text-gray-900">ESSC</span>
-          </Link>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">{user.email}</span>
-            <button
-              onClick={handleLogout}
-              className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
-            >
-              ログアウト
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Sidebar + Main Content */}
-      <div className="container mx-auto flex px-4 py-6">
-        {/* Sidebar */}
-        <aside className="w-64 rounded-lg bg-white p-4 shadow-sm">
-          <nav className="space-y-2">
-            <Link
-              href="/dashboard"
-              className="block rounded-lg bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600"
-            >
-              ダッシュボード
-            </Link>
-            
-            {user.role === 'manufacturer' && (
-              <>
-                <Link
-                  href="/dashboard/products"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  商品管理
-                </Link>
-                <Link
-                  href="/dashboard/campaigns"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  キャンペーン
-                </Link>
-                <Link
-                  href="/dashboard/reports"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  レポート
-                </Link>
-              </>
-            )}
-
-            {user.role === 'facility' && (
-              <>
-                <Link
-                  href="/dashboard/campaigns"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  キャンペーン一覧
-                </Link>
-                <Link
-                  href="/dashboard/placements"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  導入商品
-                </Link>
-                <Link
-                  href="/dashboard/qrcodes"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  QRコード
-                </Link>
-              </>
-            )}
-
-            {user.role === 'admin' && (
-              <>
-                <Link
-                  href="/dashboard/approvals"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  承認管理
-                </Link>
-                <Link
-                  href="/dashboard/analytics"
-                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  全体分析
-                </Link>
-              </>
-            )}
-
-            <Link
-              href="/dashboard/settings"
-              className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              設定
-            </Link>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="ml-6 flex-1">
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+    <DashboardLayout>
+      <div className="rounded-lg bg-white p-6 shadow-sm">
             <h1 className="mb-6 text-2xl font-bold text-gray-900">
               ダッシュボード
             </h1>
@@ -190,34 +119,51 @@ export default function DashboardPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium text-gray-600">
-                  {user.role === 'manufacturer' && '登録商品数'}
-                  {user.role === 'facility' && '導入キャンペーン数'}
-                  {user.role === 'admin' && '登録ユーザー数'}
+            {user.role === 'admin' && (
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">登録メーカー数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalManufacturers}
+                  </div>
                 </div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">0</div>
-              </div>
 
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium text-gray-600">
-                  {user.role === 'manufacturer' && 'アクティブキャンペーン'}
-                  {user.role === 'facility' && 'QRスキャン数'}
-                  {user.role === 'admin' && 'アクティブキャンペーン'}
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">登録施設数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalFacilities}
+                  </div>
                 </div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">0</div>
-              </div>
 
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium text-gray-600">
-                  {user.role === 'manufacturer' && 'QRスキャン数'}
-                  {user.role === 'facility' && '在庫アラート'}
-                  {user.role === 'admin' && '承認待ち'}
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">アクティブキャンペーン</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.activeCampaigns}
+                  </div>
                 </div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">0</div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">登録商品数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalProducts}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">承認待ち</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.pendingApprovals}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-600">総スキャン数</div>
+                  <div className="mt-2 text-3xl font-bold text-gray-900">
+                    {loading ? '...' : stats.totalScans}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quick Actions */}
             <div className="mt-8">
@@ -269,8 +215,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }

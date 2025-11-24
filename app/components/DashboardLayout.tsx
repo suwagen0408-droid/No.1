@@ -3,10 +3,12 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ReactNode } from 'react';
+import NotificationBell from './NotificationBell';
+import { useAuth } from '@/lib/auth-context';
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  user: {
+  user?: {
     id: string;
     email: string;
     role: 'manufacturer' | 'facility' | 'admin';
@@ -14,13 +16,25 @@ interface DashboardLayoutProps {
   };
 }
 
-export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, user: propUser }: DashboardLayoutProps) {
   const router = useRouter();
+  const { user: contextUser, logout } = useAuth();
+
+  // Use prop user if provided, otherwise use context user
+  const user = propUser || contextUser;
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/');
+    logout();
   };
+
+  // Show loading state if user is not available yet
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">読み込み中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,6 +46,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
             <span className="text-xl font-bold text-gray-900">ESSC</span>
           </Link>
           <div className="flex items-center space-x-4">
+            <NotificationBell userId={user.id} />
             <span className="text-sm text-gray-600">
               {user.profile?.companyName || user.profile?.facilityName || user.email}
             </span>
@@ -48,7 +63,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       {/* Sidebar + Main Content */}
       <div className="container mx-auto flex px-4 py-6">
         {/* Sidebar */}
-        <aside className="w-64 rounded-lg bg-white p-4 shadow-sm h-fit sticky top-20">
+        <aside className="w-64 flex-shrink-0 rounded-lg bg-white p-4 shadow-sm h-fit sticky top-20">
           <nav className="space-y-2">
             <Link
               href={
@@ -78,10 +93,46 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   キャンペーン管理
                 </Link>
                 <Link
-                  href="/dashboard/campaigns/new"
+                  href="/dashboard/manufacturer/inventory"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  キャンペーン作成
+                  在庫管理
+                </Link>
+                <Link
+                  href="/dashboard/manufacturer/reorders"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  追加発注管理
+                </Link>
+                <Link
+                  href="/dashboard/manufacturer/invoices"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  請求書管理
+                </Link>
+                <Link
+                  href="/dashboard/contracts"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  契約管理
+                </Link>
+                <Link
+                  href="/dashboard/manufacturer/reviews"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  施設レビュー
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  メッセージ
+                </Link>
+                <Link
+                  href="/dashboard/manufacturer/feedback"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  フィードバック
                 </Link>
                 <Link
                   href="/dashboard/reports"
@@ -107,10 +158,46 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   導入商品
                 </Link>
                 <Link
+                  href="/dashboard/facility/inventory"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  在庫・発注管理
+                </Link>
+                <Link
+                  href="/dashboard/facility/payments"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  支払い管理
+                </Link>
+                <Link
+                  href="/dashboard/facility/invoices"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  請求書
+                </Link>
+                <Link
+                  href="/dashboard/contracts"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  契約管理
+                </Link>
+                <Link
+                  href="/dashboard/facility/reviews"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  メーカーレビュー
+                </Link>
+                <Link
                   href="/dashboard/qrcodes"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   QRコード
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  メッセージ
                 </Link>
               </>
             )}
@@ -124,10 +211,40 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                   承認管理
                 </Link>
                 <Link
+                  href="/dashboard/admin/reviews"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  レビュー管理
+                </Link>
+                <Link
                   href="/dashboard/analytics"
                   className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
                   全体分析
+                </Link>
+                <Link
+                  href="/dashboard/admin/statistics"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  統計ダッシュボード
+                </Link>
+                <Link
+                  href="/dashboard/admin/payments"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  支払い管理
+                </Link>
+                <Link
+                  href="/dashboard/contracts"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  契約管理
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="block rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  メッセージ
                 </Link>
               </>
             )}

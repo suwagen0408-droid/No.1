@@ -12,7 +12,10 @@ const campaignSchema = z.object({
   targetFacilityTypes: z.array(z.string()).optional(),
   targetFacilityTags: z.array(z.string()).optional(),
   minMonthlyGuests: z.number().int().optional(),
-  costModel: z.enum(['free', 'cost_price', 'discounted']).default('free'),
+  costModel: z.enum(['free', 'paid_sampling', 'invoice_later', 'cost_price', 'discounted']).default('free'),
+  paymentTiming: z.enum(['none', 'on_approval', 'monthly_invoice']).default('none'),
+  unitPrice: z.number().min(0).optional(),
+  shippingFee: z.number().min(0).optional(),
   shippingCostCoveredBy: z
     .enum(['manufacturer', 'facility', 'split'])
     .default('manufacturer'),
@@ -80,6 +83,68 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc',
       },
     });
+
+    // Auto-activate campaigns that are approved and past their start date
+    const now = new Date();
+    const campaignsToActivate = campaigns.filter(
+      (c) => c.status === 'approved' && new Date(c.startDate) <= now
+    );
+
+    if (campaignsToActivate.length > 0) {
+      await Promise.all(
+        campaignsToActivate.map((campaign) =>
+          prisma.campaign.update({
+            where: { id: campaign.id },
+            data: { status: 'active' },
+          })
+        )
+      );
+
+      // Re-fetch campaigns with updated status
+      const updatedCampaigns = await prisma.campaign.findMany({
+        where: {
+          manufacturerId: manufacturer.id,
+          deletedAt: null,
+        },
+        include: {
+          campaignProducts: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  mainImageUrl: true,
+                  category: true,
+                },
+              },
+            },
+          },
+          facilityCampaigns: {
+            include: {
+              facility: {
+                select: {
+                  id: true,
+                  facilityName: true,
+                  facilityType: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              facilityCampaigns: true,
+              qrScanEvents: true,
+              purchaseEvents: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return NextResponse.json({ campaigns: updatedCampaigns });
+    }
 
     return NextResponse.json({ campaigns });
   } catch (error) {
@@ -149,6 +214,9 @@ export async function POST(request: NextRequest) {
         targetFacilityTags: JSON.stringify(validatedData.targetFacilityTags || []),
         minMonthlyGuests: validatedData.minMonthlyGuests,
         costModel: validatedData.costModel,
+        paymentTiming: validatedData.paymentTiming,
+        unitPrice: validatedData.unitPrice || null,
+        shippingFee: validatedData.shippingFee || null,
         shippingCostCoveredBy: validatedData.shippingCostCoveredBy,
         status: 'pending', // Requires admin approval
       },
@@ -180,6 +248,10 @@ export async function POST(request: NextRequest) {
         newValues: JSON.stringify(validatedData),
       },
     });
+
+    // Notify admins about new campaign
+    const { notifyAdminsNewCampaign } = await import('@/lib/notifications');
+    await notifyAdminsNewCampaign(campaign.name, manufacturer.companyName);
 
     // Fetch complete campaign data
     const completeCampaign = await prisma.campaign.findUnique({

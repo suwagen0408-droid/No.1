@@ -36,14 +36,16 @@ interface Placement {
 }
 
 interface Campaign {
-  id: string;
-  name: string;
+  id: string; // This is facilityCampaign ID
+  campaignId: string; // This is the actual campaign ID
+  campaignName: string; // Campaign name
+  manufacturer: string;
   status: string;
   approvedUnits?: number;
   products: Array<{
     id: string;
     name: string;
-    mainImageUrl?: string;
+    imageUrl?: string;
   }>;
 }
 
@@ -112,6 +114,8 @@ export default function PlacementsPage() {
       });
       if (campaignsRes.ok) {
         const statsData = await campaignsRes.json();
+        console.log('📊 Stats Data:', statsData);
+        console.log('🎯 Active Campaigns:', statsData.activeCampaigns);
         setCampaigns(statsData.activeCampaigns || []);
       }
     } catch (error) {
@@ -373,9 +377,9 @@ export default function PlacementsPage() {
               <h2 className="text-xl font-bold text-gray-900">新規配置を追加</h2>
             </div>
 
-            <form onSubmit={handleCreatePlacement} className="p-6 space-y-4">
+            <form onSubmit={handleCreatePlacement} className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   キャンペーン選択 <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -383,43 +387,52 @@ export default function PlacementsPage() {
                   onChange={(e) => {
                     setFormData({ ...formData, facilityCampaignId: e.target.value, productId: '' });
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                  style={{ color: '#111827' }}
                   required
                 >
-                  <option value="">選択してください</option>
-                  {campaigns.filter(c => c.status === 'approved').map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.name}
-                    </option>
-                  ))}
+                  <option value="" style={{ color: '#6B7280' }}>選択してください</option>
+                  {(() => {
+                    const approvedCampaigns = campaigns.filter(c => c.status === 'approved' || c.status === 'active');
+                    console.log('🔍 All campaigns:', campaigns);
+                    console.log('✅ Approved/Active campaigns:', approvedCampaigns);
+                    return approvedCampaigns.map((campaign) => (
+                      <option key={campaign.id} value={campaign.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
+                        {campaign.campaignName}
+                      </option>
+                    ));
+                  })()}
                 </select>
               </div>
 
               {formData.facilityCampaignId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-base font-semibold text-gray-900 mb-3">
                     商品選択 <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.productId}
                     onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                    style={{ color: '#111827' }}
                     required
                   >
-                    <option value="">選択してください</option>
-                    {campaigns
-                      .find(c => c.id === formData.facilityCampaignId)
-                      ?.products.map((product) => (
-                        <option key={product.id} value={product.id}>
+                    <option value="" style={{ color: '#6B7280' }}>選択してください</option>
+                    {(() => {
+                      const selectedCampaign = campaigns.find(c => c.id === formData.facilityCampaignId);
+                      console.log('🎯 Selected campaign:', selectedCampaign);
+                      return selectedCampaign?.products.map((product) => (
+                        <option key={product.id} value={product.id} style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>
                           {product.name}
                         </option>
-                      ))}
+                      ));
+                    })()}
                   </select>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   配置場所 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -434,7 +447,7 @@ export default function PlacementsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-base font-semibold text-gray-900 mb-3">
                     初期数量 <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -448,7 +461,7 @@ export default function PlacementsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-base font-semibold text-gray-900 mb-3">
                     再発注しきい値
                   </label>
                   <input
@@ -462,7 +475,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   メモ
                 </label>
                 <textarea
@@ -512,23 +525,24 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   更新タイプ
                 </label>
                 <select
                   value={stockUpdate.changeType}
                   onChange={(e) => setStockUpdate({ ...stockUpdate, changeType: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                  style={{ color: '#111827' }}
                 >
-                  <option value="restock">補充</option>
-                  <option value="consume">消費</option>
-                  <option value="adjust">調整</option>
-                  <option value="damage">破損</option>
+                  <option value="restock" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>補充</option>
+                  <option value="consume" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>消費</option>
+                  <option value="adjust" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>調整</option>
+                  <option value="damage" style={{ color: '#111827', backgroundColor: '#FFFFFF' }}>破損</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   変更量 {stockUpdate.changeType === 'restock' ? '(+)' : '(-)'}
                 </label>
                 <input
@@ -551,7 +565,7 @@ export default function PlacementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-base font-semibold text-gray-900 mb-3">
                   メモ
                 </label>
                 <textarea

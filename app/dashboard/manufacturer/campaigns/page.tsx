@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/app/components/DashboardLayout';
+import CampaignActivateModal from '@/app/components/CampaignActivateModal';
 
 interface Campaign {
   id: string;
@@ -47,6 +48,8 @@ export default function ManufacturerCampaignsPage() {
   const [user, setUser] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [showActivateModal, setShowActivateModal] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -85,6 +88,55 @@ export default function ManufacturerCampaignsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleActivateCampaign = async (reason: string) => {
+    if (!selectedCampaign) return;
+
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+
+      const userData = JSON.parse(userStr);
+      const response = await fetch(`/api/manufacturer/campaigns/${selectedCampaign.id}/activate`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userData.id 
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message || 'キャンペーンを開始しました！');
+        setShowActivateModal(false);
+        setSelectedCampaign(null);
+        loadCampaigns();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'キャンペーンの開始に失敗しました');
+      }
+    } catch (error) {
+      console.error('Error activating campaign:', error);
+      alert('キャンペーンの開始に失敗しました');
+    }
+  };
+
+  const openActivateModal = (campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setShowActivateModal(true);
+  };
+
+  const canActivateCampaign = (campaign: Campaign) => {
+    // Can activate if status is 'approved'
+    return campaign.status === 'approved';
+  };
+
+  const isBeforeStartDate = (campaign: Campaign) => {
+    const now = new Date();
+    const startDate = new Date(campaign.startDate);
+    return now < startDate;
   };
 
   if (!user) {
@@ -245,6 +297,16 @@ export default function ManufacturerCampaignsPage() {
                           編集
                         </Link>
                       )}
+                      {canActivateCampaign(campaign) && (
+                        <button
+                          onClick={() => openActivateModal(campaign)}
+                          className="px-4 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700"
+                        >
+                          {isBeforeStartDate(campaign) 
+                            ? '⚡ 早期開始' 
+                            : '🚀 キャンペーン開始'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -253,6 +315,18 @@ export default function ManufacturerCampaignsPage() {
           </div>
         )}
       </div>
+
+      {/* Campaign Activate Modal */}
+      {showActivateModal && selectedCampaign && (
+        <CampaignActivateModal
+          campaign={selectedCampaign}
+          onConfirm={handleActivateCampaign}
+          onCancel={() => {
+            setShowActivateModal(false);
+            setSelectedCampaign(null);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }

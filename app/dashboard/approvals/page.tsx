@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/app/components/DashboardLayout';
 
 interface User {
   id: string;
@@ -255,19 +256,17 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <DashboardLayout user={user}>
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b px-6 py-6">
           <h1 className="text-3xl font-bold text-gray-900">承認管理</h1>
           <p className="mt-2 text-gray-600">
             アカウント・商品・キャンペーンの承認または却下を行います
           </p>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Tabs */}
+        <div className="px-6 pt-6">
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8">
             <button
@@ -1236,6 +1235,7 @@ export default function ApprovalsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
